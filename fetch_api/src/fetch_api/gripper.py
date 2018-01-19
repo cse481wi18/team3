@@ -39,7 +39,7 @@ class Gripper(object):
 	goal.command.position = OPENED_POS
         self.client.send_goal(goal)
         rospy.logerr("sent open")
-	self.client.wait_for_result(rospy.Duration.from_sec(500.0))
+	self.client.wait_for_result(rospy.Duration.from_sec(5.0))
         rospy.logerr("opened")
 
     def close(self, max_effort=MAX_EFFORT):
@@ -58,5 +58,5 @@ class Gripper(object):
         goal.command.max_effort = max_effort
 	self.client.send_goal(goal)
         rospy.logerr("sent close")
-        self.client.wait_for_result(rospy.Duration.from_sec(500.0))
+        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
         rospy.logerr("closed")
