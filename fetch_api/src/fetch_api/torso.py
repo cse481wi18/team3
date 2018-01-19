@@ -19,8 +19,6 @@ class Torso(object):
     MAX_HEIGHT = 0.4
 
     def __init__(self):
-        # TODO: Create actionlib client
-        # TODO: Wait for server
         self.client = actionlib.SimpleActionClient(ACTION_NAME, FollowJointTrajectoryAction)
         rospy.logerr("initialized client")
         self.client.wait_for_server()
@@ -35,17 +33,7 @@ class Torso(object):
             height: The height, in meters, to set the torso to. Values range
                 from Torso.MIN_HEIGHT (0.0) to Torso.MAX_HEIGHT(0.4).
         """
-        # TODO: Check that the height is between MIN_HEIGHT and MAX_HEIGHT.
-        # TODO: Create a trajectory point
-        # TODO: Set position of trajectory point
-        # TODO: Set time of trajectory point
 
-        # TODO: Create goal
-        # TODO: Add joint name to list
-        # TODO: Add the trajectory point created above to trajectory
-
-        # TODO: Send goal
-        # TODO: Wait for result
         rospy.logerr("setting height")
         if height < Torso.MIN_HEIGHT or height > Torso.MAX_HEIGHT:
             rospy.logerr('Height not set (out of bounds)')
@@ -66,5 +54,5 @@ class Torso(object):
 
         self.client.send_goal(goal)
         rospy.logerr("sent set height")
-        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
+        self.client.wait_for_result()
         rospy.logerr("height set") 
