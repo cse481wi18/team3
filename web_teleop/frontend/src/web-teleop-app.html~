@@ -74,12 +74,41 @@
       msg-type="geometry_msgs/Twist"
     ></ros-topic>
 
+    <ros-service                                                                 
+      id="headService"
+      on-response="_handleHeadSuccess"
+      on-fail="_handleTorsoError"
+      name="/web_teleop/set_head"
+      ros="{{ros}}"
+      service-type="web_teleop/SetHead"
+    ></ros-service>
+
+    <ros-service                                                                 
+      id="gripperService"
+      on-response="_handleGripperSuccess"
+      on-fail="_handleTorsoError"
+      name="/web_teleop/set_gripper"
+      ros="{{ros}}"
+      service-type="web_teleop/SetGripper"
+    ></ros-service>
+
+    <ros-service                                                                 
+      id="armService"
+      on-response="_handleArmSuccess"
+      on-fail="_handleTorsoError"
+      name="/web_teleop/set_arm"
+      ros="{{ros}}"
+      service-type="web_teleop/SetArm"
+    ></ros-service>
+
     <h1>Fetch teleop</h1>
     [[status]]
 
     <div id="camera">
       <img src="//[[hostname]]:8000/stream?topic=/head_camera/rgb/image_raw"></img>
     </div>
+	
+    <h2>Torso</h2>
     <div>
       Torso height: [[_round(torsoHeight.data, 0.001)]] meters
     </div>
@@ -113,7 +142,87 @@
         >Right</paper-button>
       </div>
     </div>
+	
+    <h2>Gripper</h2>
+    <div id="driving" class="layout vertical">   
+      <div class="layout horizontal">
+        <paper-button on-tap="_setOpen">Open</paper-button>
+        <paper-button on-tap="_setClose">Close</paper-button>
+      </div>
 
+    <h2>Head</h2>
+    <div>
+      Head tilt: [[_round(headTilt.data, 0.001)]] degree
+    </div>
+    <div class="layout horizontal center">                                       
+      <paper-slider min="-90" max="45" step="0.5" editable                       
+        value="{{desiredHeadTilt}}"></paper-slider> 
+    </div>
+    <div>
+      Head pan: [[_round(headPan.data, 0.001)]] degree
+    </div>
+    <div class="layout horizontal center">                                       
+      <paper-slider min="-90" max="90" step="1" editable                       
+        value="{{desiredHeadPan}}"></paper-slider>                                                         
+    </div>
+    <div>
+    <paper-button on-tap="_setHead">Set tilt and pan angles</paper-button>                               
+    </div>
+    
+    <h2>Arm</h2>
+    <div>
+      Shoulder pan: [[_round(shoulderPan.data, 0.001)]] degree
+    </div>
+    <div class="layout horizontal center">                                       
+      <paper-slider min="-92" max="92" step="0.01" editable                       
+        value="{{desiredShoulderPan}}"></paper-slider> 
+    </div>
+    <div>
+      Shoulder lift: [[_round(shoulderLift.data, 0.001)]] degree
+    </div>
+    <div class="layout horizontal center">                                       
+      <paper-slider min="-70" max="87" step="1" editable                       
+        value="{{desiredShoulderLift}}"></paper-slider>                                                         
+    </div>
+    <div>
+      Upperarm roll: [[_round(upperarmRoll.data, 0.001)]] degree
+    </div>
+    <div class="layout horizontal center">                                       
+      <paper-slider min="-180" max="180" step="2" editable                       
+        value="{{desiredUpperarmRoll}}"></paper-slider>                                                         
+    </div>
+    <div>
+      Elbow flex: [[_round(elbowFlex.data, 0.001)]] degree
+    </div>
+    <div class="layout horizontal center">                                       
+      <paper-slider min="-129" max="129" step="0.01" editable                       
+        value="{{desiredElbowFlex}"></paper-slider>                                                         
+    </div>
+    <div>
+      Forearm roll: [[_round(forearmRoll.data, 0.001)]] degree
+    </div>
+    <div class="layout horizontal center">                                       
+      <paper-slider min="-180" max="180" step="2" editable                       
+        value="{{desiredForearmRoll}}"></paper-slider>                                                         
+    </div>
+    <div>
+      Wrist flex: [[_round(wristFlex.data, 0.001)]] degree
+    </div>
+    <div class="layout horizontal center">                                       
+      <paper-slider min="-125" max="125" step="0.01" editable                       
+        value="{{desiredWristFlex}"></paper-slider>                                                         
+    </div>
+    <div>
+      Wrist roll: [[_round(wristRoll.data, 0.001)]] degree
+    </div>
+    <div class="layout horizontal center">                                       
+      <paper-slider min="-180" max="180" step="2" editable                       
+        value="{{desiredWristRoll}"></paper-slider>                                                         
+    </div>
+    <div>
+    <paper-button on-tap="_setArmJoints">Set arm joints</paper-button>                               
+    </div>
+	    
   </template>
   <script>
     /*
@@ -130,19 +239,19 @@
       }
       _handleConnection() {
         this.status = 'Connected to the websocket server.';
-        console.log(this.status);
+        //console.log(this.status);
       }
       _handleClose() {
         this.status = 'Closed connection to the websocket server.';
-        console.log(this.status);
+        //console.log(this.status);
       }
       _handleError() {
         this.status = 'Error connecting to the websocket server.';
-        console.log(this.status);
+        //console.log(this.status);
       }  
       _handleTorsoHeight(evt) {
 	var msg = evt.detail;
-	console.log(msg);
+	//console.log(msg);
       }
       _round(val, precision) {                                                   
         return Math.round(val/precision) * precision;                            
@@ -257,6 +366,45 @@
       _endBaseCommand(evt) {
         this.status = 'Stopped driving.';
         clearInterval(this.baseCommand);
+      }
+
+      _setHead() {
+        this.status = 'Setting head tilt to ' + this.desiredHeadTilt + ' and setting head pan to ' + this.desiredHeadPan + '...';
+        this.$.headService.call({tilt: this.desiredHeadTilt, pan: this.desiredHeadPan});
+      }
+      _handleHeadSuccess() {
+        this.status = 'Set head tilt to ' + this.desiredHeadTilt + ' and set head pan to ' + this.desiredHeadPan;
+      }
+
+      _setOpen() {
+        this.status = 'Opening the gripper...';
+        this.$.gripperService.call({state: "open"});
+      }
+
+      _setClose() {
+        this.status = 'Closing the gripper...';
+        this.$.gripperService.call({state: "close"});
+      }
+      _handleGripperSuccess() {
+        this.status = 'Open/Close the gripper successfully.';
+      }
+
+      _setArmJoints() {
+        this.status = 'Setting joints to ' + this.desiredShoulderPan + ' degrees, ' + this.desiredShoulderLift + 
+		      ' degrees, ' + this.desiredUpperarmRoll + ' degrees, ' + this.desiredElbowFlex + 
+		      ' degrees, ' + this.desiredForearmRoll + ' degrees, ' + this.desiredWristFlex + 
+                      ' degrees, ' + this.desiredWristRoll + '...';
+	let val = {joints: [this.desiredShoulderPan, this.desiredShoulderLift, this.desiredUpperarmRoll,
+                                         this.desiredElbowFlex, this.desiredForearmRoll, this.desiredWristFlex,
+                                         this.desiredWristRoll]};
+	console.log(val);
+        this.$.armService.call(val);
+      }
+      _handleArmSuccess() {
+        this.status = 'Set joints to ' + this.desiredShoulderPan + ' degrees, ' + this.desiredShoulderLift + 
+	      ' degrees, ' + this.desiredUpperarmRoll + ' degrees ' + this.desiredElbowFlex + 
+	      ' degrees ' + this.desiredForearmRoll + ' degrees ' + this.desiredWristFlex + 
+              ' degrees ' + this.desiredWristRoll;
       }
 
       ready() {

@@ -58,6 +58,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
+  SetArm.srv
+  SetGripper.srv
+  SetHead.srv
   SetTorso.srv
 )
 
