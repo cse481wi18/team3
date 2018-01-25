@@ -1,6 +1,9 @@
+import rospy
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, InteractiveMarkerFeedback
 from visualization_msgs.msg import Marker
+
+rospy.init_node("interactive_marker_test")
 
 server = InteractiveMarkerServer("simple_marker")
 
@@ -36,3 +39,5 @@ def handle_viz_input(input):
 
 server.insert(int_marker, handle_viz_input)
 server.applyChanges()   
+
+rospy.spin()
