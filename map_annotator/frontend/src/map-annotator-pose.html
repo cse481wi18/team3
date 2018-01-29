@@ -1,0 +1,65 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/ros-topic/ros-topic.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+
+<dom-module id="map-annotator-pose">
+  <template>
+ 	<style is="custom-style" include="iron-flex"></style>	  
+	<style>
+	  :host {
+	    display: block;
+	    box-sizing: border-box;
+	    padding: 8px;
+	    font-family: sans-serif;
+	    height: 100%;
+	  }
+	  #main {
+	    height: 100%;
+	  }
+	  #content {
+	    height: 100%;
+	  }
+	  #controls {
+	    min-width: 300px;
+	  }
+	  map-annotator-pose + map-annotator-pose {
+	    margin-top: 8px;
+	  }
+    </style>
+	[[poseName]]
+    
+    <ros-topic
+  	auto
+	  id="userActions"
+	  topic="map_annotator/user_actions"
+	  ros="{{ros}}"
+	  msg-type="map_annotator/UserAction"
+	></ros-topic>
+	
+	<div class="layout horizontal">
+		<paper-button on-tap="_handleDelete">Delete</paper-button>
+	</div>
+		
+  </template>
+
+  <script>
+    class MapAnnotatorPose extends Polymer.Element {
+      static get is() { return 'map-annotator-pose'; }
+      static get properties() {
+        return {
+          poseName: String,
+          ros: Object
+        };
+      }
+      _handleDelete(evt) {
+		console.log('Deleting', this.poseName);
+		var msg = {
+    		command: 'delete',
+    		name: this.poseName
+			};     
+	    this.$.userActions.publish(msg);}
+    }
+    
+    window.customElements.define(MapAnnotatorPose.is, MapAnnotatorPose);
+  </script>
+</dom-module>
