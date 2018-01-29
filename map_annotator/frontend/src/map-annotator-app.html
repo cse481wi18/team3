@@ -1,4 +1,11 @@
-<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="components/polymer/lib/elements/dom-repeat.html">
+<link rel="import" href="../bower_components/ros-websocket/ros-websocket.html">
+<link rel="import" href="../bower_components/ros-topic/ros-topic.html">
+<link rel="import" href="map-annotator-pose.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/ros-rviz/ros-rviz.html">
+<link rel="import" href="../../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
 
 <dom-module id="map-annotator-app">
   <template>
@@ -8,6 +15,38 @@
       }
     </style>
     <h2>Hello [[prop1]]!</h2>
+    
+    <ros-websocket auto ros="{{ros}}"
+      url="{{url}}"
+      on-connection="_handleConnection"
+      on-close="_handleClose"
+      on-error="_handleError"></ros-websocket>	
+      
+	  <ros-topic auto
+	    ros="{{ros}}"
+	    topic="map_annotator/pose_names"
+	    msg-type="map_annotator/PoseNames"
+	    last-message="{{poseNames}}"
+	    on-message="_handlePoseNames"
+	  ></ros-topic>  
+	
+    <ros-topic
+  	  auto
+	    id="userActions"
+	    topic="map_annotator/user_actions"
+	    ros="{{ros}}"
+	    msg-type="map_annotator/UserAction"
+	   ></ros-topic>
+		
+	  <h2>Poses</h2>	
+	  <template is="dom-repeat" items="[[poseNames.names]]">
+	  <map-annotator-pose ros="[[ros]]" pose-name="[[item]]"></map-annotator-pose>
+	  <div>[[item]]</div> <!--delete div-->   
+	
+	<div class="layout horizontal">
+		<paper-button on-tap="_handlePoseNames">Create pose</paper-button>
+		<paper-button on-tap="_handleGoTo">Go to</paper-button>
+	</div>
   </template>
 
   <script>
@@ -25,6 +64,14 @@
           }
         };
       }
+      _handlePoseNames(evt) {
+	      var msg = evt.detail;
+	      console.log('Pose list: ', msg);
+	      }
+      _handleGoTo(evt) {
+	      var msg = evt.detail;
+	      console.log('Pose list: ', msg);
+	      }
     }
 
     window.customElements.define(MapAnnotatorApp.is, MapAnnotatorApp);
