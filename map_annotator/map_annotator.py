@@ -1,17 +1,16 @@
 import sys
 import os
 import pickle
-from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 import rospy
 import geometry_msgs.msg
 from nav_msgs.msg import Odometry
-from pathlib import Path
+from move_base_msgs.msg import MoveBaseGoal, MoveBaseActionGoal
 
 class PoseCallback(object):
 
   def __init__(self):
     self.currentPos = None
-    print 'in init'
     #self._pos_sub = rospy.Subscriber('amcl_pose', geometry_msgs.msg.PoseWithCovarianceStamped, self.callback)
     #TODO: fix this to use map instead of odom
     rospy.Subscriber('odom', Odometry, self.callback)
@@ -22,7 +21,10 @@ class PoseCallback(object):
     #print self.currentPos
     #self.currentPos = msg.pose.pose.position
     #print self.currentPos
-    self.currentPos = msg
+    pose = PoseStamped()
+    pose.pose = msg.pose.pose
+    pose.header = msg.header
+    self.currentPos = pose
 
 def printCommands():
   print 'Commands:'
@@ -35,6 +37,7 @@ def printCommands():
 
 def main():
   print 'Welcome to the map annotator!'
+  pub = rospy.Publisher('move_base/goal', MoveBaseActionGoal, queue_size=10)
   rospy.init_node('amcl', anonymous=True)
   printCommands();
   poseCallback = PoseCallback()
@@ -43,29 +46,48 @@ def main():
     line = sys.stdin.readline()
     lineComponents = line.split(' ')
     if lineComponents[0] == 'save':
-      name = line[len(lineComponents[0]) + 1]
-      if Path('pickle/' + name.strip()).is_file():
-        print 'pose \'' + name + '\' already exists'
-      else:
-        print poseCallback.currentPos
-        #print rospy.amcl.amcl_pose.pose.pose.position
-        print name
-        myfile = open('pickle/' + name.strip(), 'w')
-        pickle.dump(poseCallback.currentPos, myfile)
+      name = line[(len(lineComponents[0]) + 1):]
+      #print poseCallback.currentPos
+      #print rospy.amcl.amcl_pose.pose.pose.position
+      #print name
+      myfile = open('pickle/' + name.strip(), 'w')
+      pickle.dump(poseCallback.currentPos, myfile)
+      myfile.close()
     elif lineComponents[0] == 'delete':
-      os.remove('pickle/' + lineComponents[1].strip()) 
+      name = line[(len(lineComponents[0]) + 1):].strip()
+      if not os.path.exists('pickle/' + name):
+        print 'No such pose \'' + name + '\''
+      else:
+        os.remove('pickle/' + name)
     elif lineComponents[0].strip() == 'q':
       exit()
     elif lineComponents[0].strip() == 'list':
       files = os.listdir('pickle')
-      for cfile in files:
-        print cfile
+      if len(files) == 0:
+        print 'No poses'
+      else:
+        print 'Poses:'
+        for cfile in files:
+          print '  ' + cfile
     elif lineComponents[0].strip() == 'help':
       printCommands()
     elif lineComponents[0] == 'goto':
-      pass      
+      name = line[(len(lineComponents[0]) + 1):].strip()
+      if not os.path.exists('pickle/' + name):
+        print 'No such pose \'' + name + '\''
+      else:
+        loadfile = open('pickle/' + name, 'rb')
+        stampedCoPose = pickle.load(loadfile)
+        loadfile.close()
+        mbagoal = MoveBaseActionGoal()
+        mbgoal = MoveBaseGoal()
+        mbgoal.target_pose = stampedCoPose #potential issue here
+        mbagoal.goal = mbgoal
+        #mbagoal.header =
+        #mbagoal.goal_id =
+        pub.publish(mbagoal)
     else:
-      print 'unrecognized'
+      print 'Unrecognized command'
 
 
 if __name__ == '__main__':
