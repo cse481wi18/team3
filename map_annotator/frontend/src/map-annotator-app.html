@@ -61,13 +61,10 @@
 	<div id="content" class="layout horizontal">
 	  <div id="controls">
     	<h2>Poses</h2>
-	    <div class="layout horizontal">
+	    <div class="layout vertical">
 		    <paper-button on-tap="_createPose">Create pose</paper-button> 
 	    <template is="dom-repeat" items="[[poseNames.poses]]">
 	  	    <map-annotator-pose ros="[[ros]]" pose-name="[[item]]"></map-annotator-pose>
-	  	    <paper-button on-tap="_handleDelete">Delete</paper-button>		
-	  	    <paper-button on-tap="_handleGoTo">Go to</paper-button>		  
-	        <!--<div>[[item]]</div> delete div-->   
 	    </template>
 	    </div>
 	  </div>
@@ -114,12 +111,6 @@
 	      var msg = evt.detail;
 	      console.log('Pose list: ', msg.poses);
 	  }
-      _handleGoTo(evt) {
-	      var msg = evt.detail;
-	      console.log('Pose list: ', msg);
-	  }
-      _handleDelete(evt) {
-		console.log('Deleting', this.poseName);
 		var msg = {
     		command: 'delete',
     		name: this.poseName

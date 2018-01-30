@@ -38,6 +38,7 @@
 	
 	<div class="layout horizontal">
 		<paper-button on-tap="_handleDelete">Delete</paper-button>
+    <paper-button on-tap="_handleGoTo">Go To</paper-button> 
 	</div>
 		
   </template>
@@ -59,6 +60,10 @@
 			};     
 	    this.$.userActions.publish(msg);}
     }
+     _handleGoTo(evt) {                
+        var msg = evt.detail;           
+        console.log('Pose list: ', msg);
+     }                                   
     
     window.customElements.define(MapAnnotatorPose.is, MapAnnotatorPose);
   </script>
