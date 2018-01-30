@@ -13,21 +13,26 @@ def wait_for_time():
         pass
 
 class NavPath(object):
+    # Store a path (visualization state) and a reference to the publisher object
     def __init__ (self, publisher):
         self._path = []
         self._publisher = publisher
-    # receives an odom message and rebroadcasts the current path to rviz
+    # On odometry updates:
+    # * Update the state
+    # * Publish the new state
     def callback(self, msg):
-        rospy.loginfo(msg)
         pos = msg.pose.pose.position
         distance = math.sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z)
-        if distance>=0.01:
+        # Don't publish points if the robot isn't moving
+        if distance >= 0.01:
             self._path.append(pos)
             self.drawPath()
     def drawPath(self):
+        # Create LINE_STRIP marker with 0 translation/rotation offset
+        # in the "odometry" reference coordinate frame
         marker = Marker(
-                    type=Marker.LINE_STRIP,
-                    id=0,
+                    type = Marker.LINE_STRIP,
+                    id = 0,
                     lifetime = rospy.Duration(0),
                     pose = Pose(Point(0,0,0), Quaternion(0, 0, 0, 1)),
                     scale = Vector3(0.1, 0.1, 0.1),
@@ -41,6 +46,7 @@ def main():
     rospy.init_node('nav_path_display')
     wait_for_time()
     marker_publisher = rospy.Publisher('visualization_marker', Marker, queue_size=10) 
+    # Wait for other nodes to *subscribe* before we start broadcasting!
     rospy.sleep(0.5)                                                             
     nav_path = NavPath(marker_publisher)
     rospy.Subscriber('odom', Odometry, nav_path.callback)

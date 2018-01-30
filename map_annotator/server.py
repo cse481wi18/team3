@@ -2,38 +2,55 @@
 import sys
 import os
 import pickle
-from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, Pose, Point, Quaternion
 import rospy
 import geometry_msgs.msg
 from nav_msgs.msg import Odometry
 from move_base_msgs.msg import MoveBaseGoal, MoveBaseActionGoal
 from map_annotator.msg import UserAction, PoseNames
+from interactive_markers.interactive_marker_server import InteractiveMarkerServer
+from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, InteractiveMarkerFeedback, Marker
 
 # subscribes to user's command and executes them
 class UserActionSubscriber(object):
-  def __init__(self, mbg_pub, pose_name_pub, pose):
+  def __init__(self, mbg_pub, pose_name_pub, pose_pub, pose):
     rospy.logerr("SUBSCRIBER CREATED")
     rospy.Subscriber('map_annotator/user_actions', UserAction, self.callback)
     # this might not work
     self.pub = mbg_pub
-    self.pose_pub = pose_name_pub
+    self.pose_name_pub = pose_name_pub
+    self.pose_pub = pose_pub
     self.poseCallback = pose
+    self.poses = {}
+    self.markerServer = InteractiveMarkerServer("map_annotator/map_poses")
+    if os.path.exists("poses.pkl"):
+      self.poses = pickle.load(open("poses.pkl", "r"))
     rospy.logerr(os.getcwd())
     if not os.path.exists("pickle"):
       os.makedirs("pickle")
 
   def publish_poses(self):
-     self.pose_pub.publish(os.listdir('pickle'))
+     self.pose_name_pub.publish(os.listdir('pickle'))
+     for poseName in self.poses:
+       marker = self.poses[poseName]
+       self.pose_pub.publish(marker)
+  def _createMarker(self, name):
+    int_marker = InteractiveMarker()
+    int_marker.header.frame_id = "base_link"
+    int_marker.name = name
+
+    marker = Marker(type=Marker.ARROW)
+
 
   def callback(self, msg):
     rospy.logerr(msg)
-    print("WE GOT A MESSAGE!")
     cmd = msg.command
     name = msg.name
     rospy.logerr("Comparing " + str(cmd) + " to " + str(msg.CREATE))
     if cmd == msg.CREATE:
-      myfile = open("pickle/" + name, 'w+')
-      pickle.dump(self.poseCallback.currentPos, myfile)
+      self.poses[name] = self._createMarker(name)
+      myfile = open("poses.pkl", 'w+')
+      pickle.dump(self.poses, myfile)
       myfile.close()
       self.publish_poses()
     elif cmd == msg.DELETE:
