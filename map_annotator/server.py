@@ -13,66 +13,119 @@ from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, 
 
 # subscribes to user's command and executes them
 class UserActionSubscriber(object):
-  def __init__(self, mbg_pub, pose_name_pub, pose_pub, pose):
-    rospy.logerr("SUBSCRIBER CREATED")
+  def __init__(self, mbg_pub, pose_name_pub, pose):
     rospy.Subscriber('map_annotator/user_actions', UserAction, self.callback)
-    # this might not work
     self.pub = mbg_pub
     self.pose_name_pub = pose_name_pub
-    self.pose_pub = pose_pub
     self.poseCallback = pose
     self.poses = {}
-    self.markerServer = InteractiveMarkerServer("map_annotator/map_poses")
+    # TODO: use the server...
+    self.marker_server = InteractiveMarkerServer("map_annotator/map_poses")
     if os.path.exists("poses.pkl"):
-      self.poses = pickle.load(open("poses.pkl", "r"))
-    rospy.logerr(os.getcwd())
-    if not os.path.exists("pickle"):
-      os.makedirs("pickle")
+      pickle_file = open("poses.pkl", "r")
+      self.poses = pickle.load(pickle_file)
+      pickle_file.close() 
+    self.publish_poses()
+
+  def handle_marker_event(self, event):
+    #rospy.logerr("Received marker event" + str(event))
+    #rospy.logerr(dir(event))
+    #rospy.logerr(help(event))
+    self.poses[event.marker_name] = event.pose
+    if event.event_type == 5:
+      self._save_poses()
+      self.publish_poses()
+
+  def _create_marker(self, pose, pose_name):
+    # TODO: make a marker
+    int_marker = InteractiveMarker()
+    int_marker.header.frame_id = "map"
+    int_marker.name = pose_name
+    int_marker.description = pose_name
+    int_marker.pose.position = pose.position
+    int_marker.pose.position.z += 0.1
+    int_marker.pose.orientation = pose.orientation
+
+    box_marker = Marker()
+    box_marker.type = Marker.ARROW
+    box_marker.pose.orientation.w = 1
+    box_marker.scale.x = 0.45
+    box_marker.scale.y = 0.05
+    box_marker.scale.z = 0.05
+    box_marker.color.r = 0.0
+    box_marker.color.g = 0.5
+    box_marker.color.b = 0.5
+    box_marker.color.a = 1.0
+
+    #click_control = InteractiveMarkerControl()
+    #click_control.interaction_mode = InteractiveMarkerControl.BUTTON
+    #click_control.orientation.w = 1
+    #click_control.orientation.x = 0
+    #click_control.orientation.y = 1
+    #click_control.orientation.z = 0
+    #click_control.always_visible = True
+    #click_control.markers.append(box_marker)
+    #int_marker.controls.append(click_control)
+
+    button_control = InteractiveMarkerControl()
+    button_control.interaction_mode = InteractiveMarkerControl.MOVE_PLANE
+    button_control.orientation.w = 1
+    button_control.orientation.x = 0
+    button_control.orientation.y = 1
+    button_control.orientation.z = 0
+    button_control.always_visible = True
+    button_control.markers.append(box_marker)
+    int_marker.controls.append(button_control)
+
+    button_control2 = InteractiveMarkerControl()
+    button_control2.orientation.w = 1
+    button_control2.orientation.x = 0
+    button_control2.orientation.y = 1
+    button_control2.orientation.z = 0
+    button_control2.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
+    button_control2.always_visible = True
+    int_marker.controls.append(button_control2)
+
+    self.marker_server.insert(int_marker, self.handle_marker_event)
+    self.marker_server.applyChanges()
 
   def publish_poses(self):
-     self.pose_name_pub.publish(os.listdir('pickle'))
-     for poseName in self.poses:
-       marker = self.poses[poseName]
-       self.pose_pub.publish(marker)
-  def _createMarker(self, name):
-    int_marker = InteractiveMarker()
-    int_marker.header.frame_id = "base_link"
-    int_marker.name = name
+    self.pose_name_pub.publish(list(self.poses.keys()))
+    for pose_name in self.poses:
+      pose = self.poses[pose_name]
+      self._create_marker(pose, pose_name)
+    self.marker_server.applyChanges()
+  def _save_poses(self):
+    pickle_file = open("poses.pkl", 'w+')
+    pickle.dump(self.poses, pickle_file)
+    pickle_file.close()
 
-    marker = Marker(type=Marker.ARROW)
-
+  def goto(self, name):
+    # TODO: Make this use a simpleActionClient
+    mbagoal = MoveBaseActionGoal()
+    mbgoal = MoveBaseGoal()
+    mbgoal.target_pose = PoseStamped(pose=self.poses[name])
+    mbgoal.target_pose.header.frame_id = "/map"
+    mbgoal.target_pose.header.stamp = rospy.Time.now()
+    mbagoal.goal = mbgoal
+    self.pub.publish(mbagoal)
 
   def callback(self, msg):
     rospy.logerr(msg)
     cmd = msg.command
     name = msg.name
-    rospy.logerr("Comparing " + str(cmd) + " to " + str(msg.CREATE))
-    if cmd == msg.CREATE:
-      self.poses[name] = self._createMarker(name)
-      myfile = open("poses.pkl", 'w+')
-      pickle.dump(self.poses, myfile)
-      myfile.close()
+    if cmd == msg.CREATE:   
+      self.poses[name] = Pose()
       self.publish_poses()
+      self._save_poses()
     elif cmd == msg.DELETE:
-      if not os.path.exists("pickle/" + name):
-        print 'No such pose \'' + name + '\''
-      else:
-        os.remove("pickle/" + name)
+      del self.poses[name]
+      self.marker_server.erase(name)
+      self._save_poses()
       self.publish_poses()
     elif cmd == msg.GOTO:
-      name = line[(len(lineComponents[0]) + 1):].strip()
-      if not os.path.exists("pickle/" + name):
-        print 'No such pose \'' + name + '\''
-      else:
-        loadfile = open("pickle/" + name, 'rb')
-        stampedCoPose = pickle.load(loadfile)
-        loadfile.close()
-        mbagoal = MoveBaseActionGoal()
-        mbgoal = MoveBaseGoal()
-        mbgoal.target_pose = stampedCoPose #potential issue here
-        mbagoal.goal = mbgoal
-        self.pub.publish(mbagoal)
-
+      rospy.logerr("Received call to goto with name " + name)
+      self.goto(name)
 # reports current position of the robot
 class PoseCallback(object):
   def __init__(self):

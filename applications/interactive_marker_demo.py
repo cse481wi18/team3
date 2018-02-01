@@ -1,7 +1,9 @@
+#!/usr/bin/env python
 import rospy
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, InteractiveMarkerFeedback
 from visualization_msgs.msg import Marker
+from map_annotator.msg import UserAction
 
 # Make the node that controls the marker server
 rospy.init_node("interactive_marker_test")
@@ -11,9 +13,9 @@ server = InteractiveMarkerServer("simple_marker")
 
 # Make a single interactive marker
 int_marker = InteractiveMarker()
-int_marker.header.frame_id = "base_link"
+int_marker.header.frame_id = "map"
 int_marker.name = "my_marker"
-int_marker.description = "Simple Click Control"
+int_marker.description = "Click to Move to Marker"
 int_marker.pose.position.x = 1
 int_marker.pose.orientation.w = 1
 
@@ -38,13 +40,15 @@ button_control.markers.append(box_marker)
 # Associate the control with the interactive marker
 int_marker.controls.append(button_control)
 
+pub = rospy.Publisher("map_annotator/user_actions", UserAction, queue_size=10)
+
 
 # Callback to handle interactivity
 def handle_viz_input(input):
+    rospy.logerr("Event type was " + str(input.event_type))
     if (input.event_type == InteractiveMarkerFeedback.BUTTON_CLICK):
+        pub.publish(UserAction(command=UserAction.GOTO, name="demo")) 
         rospy.loginfo(input.marker_name + ' was clicked.')
-    else:
-        rospy.loginfo('Cannot handle this InteractiveMarker event')
 
 # Add the interactive marker to the server
 server.insert(int_marker, handle_viz_input)

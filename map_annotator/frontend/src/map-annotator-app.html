@@ -62,7 +62,7 @@
 	  <div id="controls">
     	<h2>Poses</h2>
 	    <div class="layout vertical">
-		    <paper-button on-tap="_createPose">Create pose</paper-button> 
+              <paper-button on-tap="_createPose" raised >Create pose</paper-button> 
 	    <template is="dom-repeat" items="[[poseNames.poses]]">
 	  	    <map-annotator-pose ros="[[ros]]" pose-name="[[item]]"></map-annotator-pose>
 	    </template>
@@ -111,70 +111,65 @@
 	      var msg = evt.detail;
 	      console.log('Pose list: ', msg.poses);
 	  }
-		var msg = {
-    		command: 'delete',
-    		name: this.poseName
-			};     
-	    this.$.userActions.publish(msg);}
-ready() {
-  super.ready();
-  this.hostname = window.location.hostname;
-  var config = {
-    "globalOptions": {
-      "background": "#111111",
-      "colladaLoader": "collada2",
-      "colladaServer": "http://localhost:8001/",
-      "fixedFrame": "/odom",
-      "url": "ws://localhost:9090",
-      "videoServer": "http://localhost:9999"
-    },
-    "sidebarOpened": false,
-    "displays": [
-      {
-        "isShown": true,
-        "name": "Grid",
-        "options": {
-          "cellSize": "1",
-          "color": "#cccccc",
-          "numCells": "10"
+    ready() {
+      super.ready();
+      this.hostname = window.location.hostname;
+      var config = {
+        "globalOptions": {
+          "background": "#111111",
+          "colladaLoader": "collada2",
+          "colladaServer": "http://localhost:8001/",
+          "fixedFrame": "/odom",
+          "url": "ws://localhost:9090",
+          "videoServer": "http://localhost:9999"
         },
-        "type": "grid"
-      },
-      {
-        "isShown": true,
-        "name": "Map",
-        "options": {
-          "color": {
-            "r": 255,
-            "g": 255,
-            "b": 255
+        "sidebarOpened": false,
+        "displays": [
+          {
+            "isShown": true,
+            "name": "Grid",
+            "options": {
+              "cellSize": "1",
+              "color": "#cccccc",
+              "numCells": "10"
+            },
+            "type": "grid"
           },
-          "continuous": true,
-          "opacity": "1",
-          "topic": "/map"
-        },
-        "type": "occupancyGrid"
-      },
-      {
-        "isShown": true,
-        "name": "Robot model",
-        "options": {
-          "param": "robot_description"
-        },
-        "type": "urdf"
-      },
-      {
-        "isShown": true,
-        "name": "Interactive Markers",
-        "options": {
-          "topic": "/map_annotator/map_poses"
-        },
-        "type": "interactiveMarkers"
-      }
-    ]
-  };
-  this.$.rviz.config = config;	
-}	  
+          {
+            "isShown": true,
+            "name": "Map",
+            "options": {
+              "color": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "continuous": true,
+              "opacity": "1",
+              "topic": "/map"
+            },
+            "type": "occupancyGrid"
+          },
+          {
+            "isShown": true,
+            "name": "Robot model",
+            "options": {
+              "param": "robot_description"
+            },
+            "type": "urdf"
+          },
+          {
+            "isShown": true,
+            "name": "Interactive Markers",
+            "options": {
+              "topic": "/map_annotator/map_poses"
+            },
+            "type": "interactiveMarkers"
+          }
+        ]
+      };
+      this.$.rviz.config = config;	
+    }	  
     }
 
     window.customElements.define(MapAnnotatorApp.is, MapAnnotatorApp);

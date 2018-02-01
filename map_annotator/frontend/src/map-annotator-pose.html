@@ -25,8 +25,15 @@
 	  map-annotator-pose + map-annotator-pose {
 	    margin-top: 8px;
 	  }
+    .posewrap {
+      margin: 16px;
+      padding: 8px;
+      border-top: 1px solid rgba(0,0,0,0.1);
+    }
+    .posename {
+      padding: 8px 16px;
+    }
     </style>
-	[[poseName]]
     
     <ros-topic
   	auto
@@ -36,9 +43,10 @@
 	  msg-type="map_annotator/UserAction"
 	></ros-topic>
 	
-	<div class="layout horizontal">
-		<paper-button on-tap="_handleDelete">Delete</paper-button>
-    <paper-button on-tap="_handleGoTo">Go To</paper-button> 
+	<div class="layout horizontal posewrap">
+    <span class="posename"> [[poseName]]</span>
+		<paper-button raised style="color: white; background-color:rgb(50,128,255)" on-tap="_handleDelete">Delete</paper-button>
+    <paper-button raised style="color: white; background-color:rgb(50,128,255)" on-tap="_handleGoTo">Go To</paper-button> 
 	</div>
 		
   </template>
@@ -53,17 +61,28 @@
         };
       }
       _handleDelete(evt) {
-		console.log('Deleting', this.poseName);
-		var msg = {
-    		command: 'delete',
-    		name: this.poseName
-			};     
-	    this.$.userActions.publish(msg);}
+		    console.log('Deleting', this.poseName);
+		    var msg = {
+        	command: 'delete',
+        	name: this.poseName
+		    };     
+	      this.$.userActions.publish(msg);
+      }
+      _handleGoTo(evt) {                 
+         console.log('Going to', this.poseName);
+		    var msg = {
+        	command: 'goto',
+        	name: this.poseName
+		    };     
+	      this.$.userActions.publish(msg);
+      }
     }
-     _handleGoTo(evt) {                
-        var msg = evt.detail;           
-        console.log('Pose list: ', msg);
-     }                                   
+    
+    window.customElements.define(MapAnnotatorPose.is, MapAnnotatorPose);
+  </script>
+</dom-module>
+      }                                   
+    }
     
     window.customElements.define(MapAnnotatorPose.is, MapAnnotatorPose);
   </script>

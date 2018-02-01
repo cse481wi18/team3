@@ -36,7 +36,7 @@ class NavPath(object):
                     lifetime = rospy.Duration(0),
                     pose = Pose(Point(0,0,0), Quaternion(0, 0, 0, 1)),
                     scale = Vector3(0.1, 0.1, 0.1),
-                    header = Header(frame_id='odom'),
+                    header = Header(frame_id='map'),
                     color = ColorRGBA(1.0, 1.0, 1.0, 0.8),
                     points = self._path
                     )
