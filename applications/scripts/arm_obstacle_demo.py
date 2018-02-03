@@ -4,6 +4,7 @@ import fetch_api
 import rospy
 from moveit_python import PlanningSceneInterface
 from geometry_msgs.msg import PoseStamped
+from moveit_msgs.msg import OrientationConstraint
 
 def main():
   rospy.init_node('arm_obstacle_demo')
@@ -29,7 +30,7 @@ def main():
   x = table_x - (table_size_x / 2) + (size_x / 2)
   y = 0 
   z = table_z + (table_size_z / 2) + (size_z / 2)
-  planning_scene.addBox('divider', size_x, size_y, size_z, x, y, z)
+#  planning_scene.addBox('divider', size_x, size_y, size_z, x, y, z)
 
   pose1 = PoseStamped()
   pose1.header.frame_id = 'base_link'
@@ -45,6 +46,16 @@ def main():
   pose2.pose.position.z = 0.75
   pose2.pose.orientation.w = 1
 
+
+  oc = OrientationConstraint()
+  oc.header.frame_id = 'base_link'
+  oc.link_name = 'wrist_roll_link'
+  oc.orientation.w = 1
+  oc.absolute_x_axis_tolerance = 0.1
+  oc.absolute_y_axis_tolerance = 0.1
+  oc.absolute_z_axis_tolerance = 3.14
+  oc.weight = 1.0
+
   arm = fetch_api.Arm()
   def shutdown():
     arm.cancel_all_goals()
@@ -54,7 +65,8 @@ def main():
     'allowed_planning_time': 15,
     'execution_timeout': 10,
     'num_planning_attempts': 5,
-    'replan': False
+    'replan': False,
+    'orientation_constraint': oc
   }
 
   planning_scene.removeAttachedObject('tray')
@@ -80,7 +92,7 @@ def main():
     rospy.loginfo('Pose 2 succeeded')
 
   planning_scene.removeCollisionObject('table')
-  planning_scene.removeCollisionObject('divider')
+ # planning_scene.removeCollisionObject('divider')
   planning_scene.removeAttachedObject('tray')
 
 if __name__ == '__main__':
