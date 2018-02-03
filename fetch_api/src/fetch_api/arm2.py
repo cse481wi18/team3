@@ -14,7 +14,6 @@ ACTION_NAME = "arm_controller/follow_joint_trajectory"
 TIME_FROM_START = 5
 
 
-
 def moveit_error_string(val):
     """Returns a string associated with a MoveItErrorCode.
         
@@ -76,7 +75,6 @@ def moveit_error_string(val):
         return 'UNKNOWN_ERROR_CODE'
 
 
-
 class Arm(object):
     """Arm controls the robot's arm.
 
@@ -95,6 +93,7 @@ class Arm(object):
         self._move_group_client.wait_for_server()
 	rospy.logerr("got server response")
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
+
 
     def move_to_joints(self, arm_joints):
         """Moves the robot's arm to the given joints.
@@ -176,8 +175,8 @@ class Arm(object):
         #   code of the action result is not SUCCESS.
         self._move_group_client.send_goal_and_wait(goal, rospy.Duration(10))
         result = self._move_group_client.get_result()
-        error = moveit_error_string(result.error_code.val)
-        if error == "SUCCESS":
+        error = move_it_error_string(result.error_code.val)
+        if error == 'SUCCESS':
             return None
         return error
 
