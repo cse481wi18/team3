@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 import tf
+import tf.transformations as tft
+import math
+import numpy as np
 import rospy
 from copy import deepcopy
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
@@ -21,7 +24,7 @@ def lookup_transform(a, b):
       pass
   return Pose(Point(*pose[0]), Quaternion(*pose[1]))
 
-def create_marker(mesh_path):
+def create_marker(mesh_path, x=0.166):
   marker = Marker()
   marker.type = Marker.MESH_RESOURCE
   marker.mesh_resource = mesh_path
@@ -30,7 +33,7 @@ def create_marker(mesh_path):
   marker.scale.y = 1
   marker.scale.z = 1
   marker.color = ColorRGBA(0, 1, 0, 1)
-  marker.pose.position.x =  0.166
+  marker.pose.position.x = x
   return marker
 
 def make_6dof_controls():
@@ -96,8 +99,6 @@ class GripperTeleop(object):
         im.name = "gripper_control"
         im.description = "Gripper Control"
         im.pose = pose
-        # TODO: set initial pose correctly? or maybe do it in start()?
-        #im.pose = marker_pose
         gripper  = create_marker("package://fetch_description/meshes/gripper_link.dae")
         finger_l = create_marker("package://fetch_description/meshes/l_gripper_finger_link.STL")
         finger_l.pose.position.y = -0.06
@@ -156,7 +157,7 @@ class GripperTeleop(object):
       self._arm.move_to_pose(pose_stamped)
 
     def _check_pose(self, pose_stamped):
-      return self._arm.check_pose(pose_stamped) is None
+      return self._arm.compute_ik(pose_stamped)
 
     def _redraw_with_color(self, reachable, pose_stamped):
       rospy.logerr("Reachable" + str(reachable))
@@ -180,7 +181,7 @@ class GripperTeleop(object):
             self._open()
           elif (fid == 3):
             self._close()
-        elif (f.event_type == f.MOUSE_UP):
+        elif (f.event_type == f.POSE_UPDATE):
           self._redraw_with_color(self._check_pose(pose_stamped), pose_stamped)
           #pass
         # handle user action on the interactive marker
@@ -191,7 +192,26 @@ class GripperTeleop(object):
         #   update the color of the markers depending on reachability
         #   using the moveit ik server
 
+# TODO: TRANSFOMRATION MATRIX.... PLEASE VERIFY
+grip_in_obj = np.array([
+  [1, 0, 0, 0],
+  [0, 1, 0, 0],
+  [0, 0, 1, 0],
+  [0, 0, 0, 1]
+])
 
+pre_in_obj = np.array([
+  [1, 0, 0, -0.1],
+  [0, 1, 0, 0],
+  [0, 0, 1, 0],
+  [0, 0, 0, 1]
+])
+lift_in_obj = np.array([
+  [1, 0, 0, 0],
+  [0, 1, 0, 0],
+  [0, 0, 1, 0.2],
+  [0, 0, 0, 1]
+])
 # TODO: Write this class (it should mostly be similar to the above class, so finish that one first)
 class AutoPickTeleop(object):
     def __init__(self, arm, gripper, im_server):
@@ -199,26 +219,177 @@ class AutoPickTeleop(object):
         self._gripper = gripper
         self._im_server = im_server
 
+    def create_gripper_marker_control(self, dx=0, dz=0):
+        gripper  = create_marker("package://fetch_description/meshes/gripper_link.dae")
+        gripper.pose.position.x -= dx
+        gripper.pose.position.z += dz
+        finger_l = create_marker("package://fetch_description/meshes/l_gripper_finger_link.STL")
+        finger_l.pose.position.y = -0.06
+        finger_l.pose.position.x -= dx
+        finger_l.pose.position.z += dz
+        finger_r = create_marker("package://fetch_description/meshes/r_gripper_finger_link.STL")
+        finger_r.pose.position.x -= dx
+        finger_r.pose.position.y = +0.06
+        finger_r.pose.position.z += dz
+        control = InteractiveMarkerControl()
+        control.markers.append(gripper)
+        control.markers.append(finger_l)
+        control.markers.append(finger_r)
+        control.always_visible = True
+        return control
+
+    def _set_im(self, im):
+        self._im_server.insert(im, feedback_cb=self.handle_feedback)
+        self._im_server.applyChanges()
+
+    def _create_interactive_marker(self, pose):
+        # creates an interactive marker for the gripper controller
+        # * shaped like robot's gripper
+        # * 6dof-movable
+        # * clickable menu
+        # returns it
+        ##### SETUP INTERACTIVE MARKER
+        rospy.logerr( "create interactive marker!")
+        im = InteractiveMarker()
+        im.header.frame_id = "base_link"
+        im.name = "gripper_control"
+        im.description = "Gripper Control"
+        im.pose = pose
+        # TODO: setup box marker
+        box = Marker()
+        box.type = Marker.CUBE
+        box.pose.orientation.w = 1
+        box.scale.x = 0.05
+        box.scale.y = 0.05
+        box.scale.z = 0.05
+        box.color = ColorRGBA(1, 1, 0, 1)
+        box_control = InteractiveMarkerControl()
+        box_control.markers.append(box)
+        im.controls.append(box_control)
+        # TODO: setup grasp marker
+        control = self.create_gripper_marker_control()
+
+        # TODO: setup lift marker
+        lift_control = self.create_gripper_marker_control(dz=0.2)
+
+        ##### TODO: SETTING UP PRE-GRASP MARKER
+        pre_control = self.create_gripper_marker_control(dx=0.1)
+        
+        # add controller for grippers in to InteractiveMarker
+        im.controls.append(control)
+        im.controls.append(lift_control)
+        im.controls.append(pre_control)
+
+        # controls for 6dofs
+        controls = make_6dof_controls()
+        im.controls.extend(controls)
+
+        # menu items!
+        move_gripper = MenuEntry()
+        move_gripper.id = 1
+        move_gripper.parent_id = 0
+        move_gripper.title = "Pick from front"
+        move_gripper.command = "FEEDBACK"
+        im.menu_entries.append(move_gripper)
+        open_gripper = MenuEntry()
+        open_gripper.id = 2
+        open_gripper.parent_id = 0
+        open_gripper.title = "Open gripper"
+        open_gripper.command = "FEEDBACK"
+        im.menu_entries.append(open_gripper)
+        control.interaction_mode = InteractiveMarkerControl.MENU
+
+        im.scale = 0.3
+        return im
+ 
+
     def start(self):
         # obj_im = InteractiveMarker() ...
-        self._im_server.insert(obj_im, feedback_cb=self.handle_feedback)
+        im = self._create_interactive_marker(lookup_transform("base_link", "gripper_link"))
+        self._set_im(im)
+        pose_stamped = PoseStamped(pose=im.pose)
+        pose_stamped.header.frame_id = "/base_link"
+        pose_stamped.header.stamp = rospy.Time.now()
 
-    def handle_feedback(self, feedback):
-        pass
+        for i in range(1, 4):
+          self._redraw_with_color(self._check_pose(pose_stamped, i), pose_stamped, index=i)
+
+
+    def _open(self):
+      self._gripper.open()
+
+    def _close(self):
+      self._gripper.close()
+
+    def _move(self, pose_stamped):
+      ps = self.calculate_pose_stamp(pose_stamped, pre_in_obj)
+      self._arm.move_to_pose(ps)
+      ps = self.calculate_pose_stamp(pose_stamped, grip_in_obj)
+      self._arm.move_to_pose(ps)
+      ps = self.calculate_pose_stamp(pose_stamped, lift_in_obj)
+      self._arm.move_to_pose(ps)
+      self._close()
+
+    def calculate_pose_stamp(self, pose_stamped, grip_in_obj):
+      # pose_stamed is the new updated position of object
+      pos = pose_stamped.pose.position
+      ori = pose_stamped.pose.orientation
+      obj_in_base = np.dot(tft.translation_matrix([pos.x, pos.y, pos.z]), tft.quaternion_matrix([ori.x, ori.y, ori.z, ori.w]))
+      gripper_in_base = np.dot(obj_in_base, grip_in_obj)
+      pose = Pose(Point(*tft.translation_from_matrix(gripper_in_base)), Quaternion(*tft.quaternion_from_matrix(gripper_in_base)))
+      pose_stamped = PoseStamped()
+      pose_stamped.header.frame_id = "/base_link"
+      pose_stamped.header.stamp = rospy.Time.now()
+      pose_stamped.pose = pose
+      return pose_stamped
+
+
+    def _check_pose(self, pose_stamped, i=1):
+      # pose_stamed is the new updated position of object
+      if i == 1:
+        pose_stamped = self.calculate_pose_stamp(pose_stamped, grip_in_obj)
+      if i == 2:
+        pose_stamped = self.calculate_pose_stamp(pose_stamped, lift_in_obj)
+      elif i == 3:
+        pose_stamped = self.calculate_pose_stamp(pose_stamped, pre_in_obj)
+      return self._arm.compute_ik(pose_stamped)
+
+    def _redraw_with_color(self, reachable, pose_stamped, index=0):
+      rospy.logerr("Reachable" + str(reachable))
+      color = ColorRGBA(0, 1, 0, 1) if reachable else ColorRGBA(1, 0, 0, 1)
+      im = self._im_server.get("gripper_control")
+      for marker in im.controls[index].markers:
+        marker.color = color
+      self._set_im(im)
+ 
+    def handle_feedback(self, f):
+        rospy.logerr( "handling feedback!")
+        im = self._im_server.get("gripper_control")
+        pose_stamped = PoseStamped(pose=im.pose)
+        pose_stamped.header.frame_id = "/base_link"
+        pose_stamped.header.stamp = rospy.Time.now()
+        if (f.event_type == f.MENU_SELECT):
+          fid = f.menu_entry_id
+          # pick from front
+          if (fid == 1):
+            self._move(pose_stamped)
+          # open grip
+          elif (fid == 2):
+            self._open()
+        elif (f.event_type == f.POSE_UPDATE):
+          for i in range(1, 4):
+            self._redraw_with_color(self._check_pose(pose_stamped, i), pose_stamped, index=i)
 
 
 def main():
     rospy.init_node("gripper_teleop")
     #...
-    im_server = InteractiveMarkerServer('gripper_im_server')
-    #auto_pick_im_server = InteractiveMarkerServer('auto_pick_im_server')
-    rospy.logerr("help im trapped in a ros node")
+    im_server = InteractiveMarkerServer('gripper_im_server', q_size=2)
+    # auto_pick_im_server = InteractiveMarkerServer('auto_pick_im_server', q_size=2)
     teleop = GripperTeleop(Arm(), Gripper(), im_server)
-    #teleop = GripperTeleop(None, None, im_server)
-    rospy.logerr("whee i escaped")
-    #auto_pick = AutoPickTeleop(arm, gripper, auto_pick_im_server)
+    # auto_pick = AutoPickTeleop(Arm(), Gripper(), auto_pick_im_server)
     teleop.start()
-    #auto_pick.start()
+    # auto_pick.start()
     rospy.spin()
 
 if __name__ == "__main__":
