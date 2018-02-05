@@ -39,7 +39,6 @@ button_control.always_visible = True
 button_control.markers.append(box_marker)
 # Associate the control with the interactive marker
 int_marker.controls.append(button_control)
-
 pub = rospy.Publisher("map_annotator/user_actions", UserAction, queue_size=10)
 
 

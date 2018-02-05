@@ -13,8 +13,6 @@ from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 ACTION_NAME = "arm_controller/follow_joint_trajectory"
 TIME_FROM_START = 5
 
-
-
 def moveit_error_string(val):
     """Returns a string associated with a MoveItErrorCode.
         
@@ -91,7 +89,7 @@ class Arm(object):
 	self.client = actionlib.SimpleActionClient(ACTION_NAME, FollowJointTrajectoryAction)
         self._move_group_client = actionlib.SimpleActionClient("move_group", MoveGroupAction)
 	rospy.logerr("initialized client")
-	self.client.wait_for_server()
+	self.client.wait_for_server(rospy.Duration(1))
         self._move_group_client.wait_for_server()
 	rospy.logerr("got server response")
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
