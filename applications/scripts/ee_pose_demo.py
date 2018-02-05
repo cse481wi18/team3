@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import tf
 import rospy
 
@@ -16,7 +18,7 @@ if __name__ == '__main__':
     if trans is None or rot is None:
       print '"base_link" passed to lookupTransform argument target_frame does not exist.'
     else:
-      print str(trans) + ' ' + str(rot)
+      print str(tuple(trans)) + ' ' + str(tuple(rot))
     
     try:
       rate.sleep()
