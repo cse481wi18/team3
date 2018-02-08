@@ -326,9 +326,9 @@ class AutoPickTeleop(object):
       self._arm.move_to_pose(ps)
       ps = self.calculate_pose_stamp(pose_stamped, grip_in_obj)
       self._arm.move_to_pose(ps)
+      self._close()
       ps = self.calculate_pose_stamp(pose_stamped, lift_in_obj)
       self._arm.move_to_pose(ps)
-      self._close()
 
     def calculate_pose_stamp(self, pose_stamped, grip_in_obj):
       # pose_stamed is the new updated position of object
@@ -384,12 +384,12 @@ class AutoPickTeleop(object):
 def main():
     rospy.init_node("gripper_teleop")
     #...
-    im_server = InteractiveMarkerServer('gripper_im_server', q_size=2)
-    # auto_pick_im_server = InteractiveMarkerServer('auto_pick_im_server', q_size=2)
-    teleop = GripperTeleop(Arm(), Gripper(), im_server)
-    # auto_pick = AutoPickTeleop(Arm(), Gripper(), auto_pick_im_server)
-    teleop.start()
-    # auto_pick.start()
+    # im_server = InteractiveMarkerServer('gripper_im_server', q_size=2)
+    auto_pick_im_server = InteractiveMarkerServer('auto_pick_im_server', q_size=2)
+    # teleop = GripperTeleop(Arm(), Gripper(), im_server)
+    auto_pick = AutoPickTeleop(Arm(), Gripper(), auto_pick_im_server)
+    # teleop.start()
+    auto_pick.start()
     rospy.spin()
 
 if __name__ == "__main__":
