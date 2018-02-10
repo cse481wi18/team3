@@ -49,6 +49,7 @@ catkin_python_setup()
 ##   * uncomment the generate_messages entry below
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
+
 ## Generate messages in the 'msg' folder
 # add_message_files(
 #   FILES
@@ -106,8 +107,11 @@ catkin_python_setup()
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES perception
+ INCLUDE_DIRS include
+ LIBRARIES
+   perception_crop
+   perception_downsample
+   perception_segmentation
 #  CATKIN_DEPENDS roscpp rospy
 #  DEPENDS system_lib
 )
@@ -119,13 +123,21 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/perception.cpp
+add_library(perception_crop src/crop.cpp)
+add_dependencies(perception_crop ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(perception_crop ${catkin_LIBRARIES})
+add_library(perception_downsample src/downsample.cpp)
+add_dependencies(perception_downsample ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(perception_downsample ${catkin_LIBRARIES})
+add_library(perception_segmentation src/segmentation.cpp)
+add_dependencies(perception_segmentation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 # )
 
 ## Add cmake target dependencies of the library
@@ -157,6 +169,15 @@ add_executable(perception_save_cloud_main src/save_cloud_main.cpp)
 set_target_properties(perception_save_cloud_main PROPERTIES OUTPUT_NAME save_cloud PREFIX "")
 add_dependencies(perception_save_cloud_main ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(perception_save_cloud_main
+  ${catkin_LIBRARIES}
+)
+add_executable(perception_point_cloud_demo src/point_cloud_demo.cpp)
+set_target_properties(perception_point_cloud_demo PROPERTIES OUTPUT_NAME point_cloud_demo PREFIX "")
+add_dependencies(perception_point_cloud_demo ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(perception_point_cloud_demo
+  perception_crop
+  perception_downsample
+  perception_segmentation
   ${catkin_LIBRARIES}
 )
 
