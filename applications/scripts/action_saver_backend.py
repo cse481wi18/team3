@@ -116,7 +116,7 @@ class actionSaver(object):
     self.list.append("close")
 
   def save_poses(self):
-    myfile = open('pickle/' + self.name, 'w')  # just hard-coded for now
+    myfile = open("/home/team3/lab_29_actions/" + self.name, 'w+')  # just hard-coded for now
     pickle.dump(self.list, myfile)
     myfile.close()
 

@@ -58,6 +58,7 @@ def main():
             # figure out which marker to save it relative to
             backend.list_tags() # prints each marker visible
             print "Choose one tag to save the position relative to"
+            backend.list_tags()
             # get tag id of marker
             tag_id = raw_input("> ")
             tag_id = tag_id.strip()

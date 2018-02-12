@@ -106,7 +106,7 @@ def main():
   print("Give me the program name!")
   name = raw_input(">")
   name = name.strip()
-  loadfile = open('pickle/' + name, 'rb')
+  loadfile = open('/home/team3/lab_29_actions/' + name, 'rb')
   commandlist = pickle.load(loadfile)
   for item in commandlist:
     if isinstance(item, tuple):
