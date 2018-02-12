@@ -10,6 +10,8 @@ from .moveit_goal_builder import MoveItGoalBuilder
 from moveit_msgs.msg import MoveItErrorCodes, MoveGroupAction, OrientationConstraint
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 
+from robot_controllers_msgs.msg import QueryControllerStatesAction, ControllerState, QueryControllerStatesGoal
+
 ACTION_NAME = "arm_controller/follow_joint_trajectory"
 TIME_FROM_START = 5
 
@@ -88,9 +90,11 @@ class Arm(object):
     def __init__(self):
 	self.client = actionlib.SimpleActionClient(ACTION_NAME, FollowJointTrajectoryAction)
         self._move_group_client = actionlib.SimpleActionClient("move_group", MoveGroupAction)
+        self._controller_client = actionlib.SimpleActionClient("query_controller_states", QueryControllerStatesAction)
 	rospy.logerr("initialized client")
 	self.client.wait_for_server(rospy.Duration(1))
         self._move_group_client.wait_for_server()
+        self._controller_client.wait_for_server()
 	rospy.logerr("got server response")
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
 
@@ -160,6 +164,16 @@ class Arm(object):
         Returns:
             string describing the error if an error occurred, else None.
         """
+        # start the arm controller again! (before sending any MoveIt commands)
+        goal = QueryControllerStatesGoal()
+        state = ControllerState()
+        state.name = 'arm_controller/follow_joint_trajectory'
+        state.state = ControllerState.STOPPED
+        goal.updates.append(state)
+        self._controller_client.send_goal(goal)
+        self._controller_client.wait_for_result()
+
+        # start doing moveit stuff!
         goal_builder = MoveItGoalBuilder()
         goal_builder.set_pose_goal(pose_stamped)
         goal_builder.allowed_planning_time = allowed_planning_time
@@ -225,4 +239,16 @@ class Arm(object):
         #     if name in ArmJoints.names():
         #         rospy.loginfo('{}: {}'.format(name, position))
         return True
-
+    
+    """
+    Relaxes the arm! Yay!
+    Does some cool stuff with QueryControllerStates
+    """
+    def relax(self):
+        goal = QueryControllerStatesGoal()
+        state = ControllerState()
+        state.name = 'arm_controller/follow_joint_trajectory'
+        state.state = ControllerState.STOPPED
+        goal.updates.append(state)
+        self._controller_client.send_goal(goal)
+        self._controller_client.wait_for_result()

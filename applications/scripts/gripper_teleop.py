@@ -384,12 +384,12 @@ class AutoPickTeleop(object):
 def main():
     rospy.init_node("gripper_teleop")
     #...
-    # im_server = InteractiveMarkerServer('gripper_im_server', q_size=2)
-    auto_pick_im_server = InteractiveMarkerServer('auto_pick_im_server', q_size=2)
-    # teleop = GripperTeleop(Arm(), Gripper(), im_server)
-    auto_pick = AutoPickTeleop(Arm(), Gripper(), auto_pick_im_server)
-    # teleop.start()
-    auto_pick.start()
+    im_server = InteractiveMarkerServer('gripper_im_server', q_size=2)
+    # auto_pick_im_server = InteractiveMarkerServer('auto_pick_im_server', q_size=2)
+    teleop = GripperTeleop(Arm(), Gripper(), im_server)
+    # auto_pick = AutoPickTeleop(Arm(), Gripper(), auto_pick_im_server)
+    teleop.start()
+    # auto_pick.start()
     rospy.spin()
 
 if __name__ == "__main__":
