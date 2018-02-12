@@ -121,6 +121,7 @@ class actionSaver(object):
     myfile.close()
 
   def relax(self):
+    print("RELAXXXXINGGGG")
     self.arm.relax()
 
   def list_tags(self):

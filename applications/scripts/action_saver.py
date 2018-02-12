@@ -45,7 +45,9 @@ def main():
     # get action saver from action_saver_backend.py
     backend = asb.actionSaver(action_name)
     print_controls()
+    print("relaxing...")
     backend.relax()
+    print("relaxed")
     while True:
         # get user command
         user_input = raw_input("> ")

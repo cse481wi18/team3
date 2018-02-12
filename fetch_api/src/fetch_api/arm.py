@@ -252,3 +252,4 @@ class Arm(object):
         goal.updates.append(state)
         self._controller_client.send_goal(goal)
         self._controller_client.wait_for_result()
+        print("arm controller stopped")
