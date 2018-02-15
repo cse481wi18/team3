@@ -64,9 +64,12 @@ class actionSaver(object):
     self.reader = self.ArTagReader()
     sub = rospy.Subscriber('ar_pose_marker', AlvarMarkers, self.reader.callback) # Subscribe to AR tag poses
     # while AR tags cannot be found
+    self.markers = {}
     while len(self.reader.markers) == 0:
       print "finding markers...."
       rospy.sleep(0.1)
+    for m in self.reader.markers:
+      self.markers[m.id] = m.pose
 
   """
     captures pose of the current wrist_link position and finds the transformation_w->t.
@@ -79,9 +82,9 @@ class actionSaver(object):
     # get the marker pose
     tag_id = int(tag_id)
     marker_pose_stamped = None   # this is a PostStamped
-    for marker in self.reader.markers:
-        if marker.id == tag_id:
-            marker_pose_stamped = marker.pose
+    for marker in self.markers:
+        if marker == tag_id:
+            marker_pose_stamped = self.markers[marker]
             break
 
     # current pose of the wrist_link
@@ -125,8 +128,8 @@ class actionSaver(object):
     self.arm.relax()
 
   def list_tags(self):
-    for marker in self.reader.markers:
-      print str(marker.id)
+    for marker in self.markers:
+      print str(marker)
   
   class ArTagReader(object):
     def __init__(self):

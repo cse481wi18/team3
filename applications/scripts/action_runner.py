@@ -49,20 +49,25 @@ class ActionRunner(object):
         self.gripper = fetch_api.Gripper()
         self.arm = fetch_api.Arm()
         self.reader = self.ArTagReader()
-
+        self.markers = {}
         # get initial position of markers... it will continue updating in background
         while len(self.reader.markers) == 0:
             print("finding my markers....")
             rospy.sleep(0.1)
+        for m in self.reader.markers:
+            self.markers[m.id] = m
+
         print("I am done!")
 
     def go_to_pose(self, tag_id, wrist_in_marker):
         tag_id = int(tag_id)
+        print(tag_id)
+        print(wrist_in_marker)
         marker_pose_stamped = None
-        for marker in self.reader.markers:
-            if marker.id == tag_id:
-                print(tag_id, marker.id)
-                marker_pose_stamped = marker.pose
+        for marker in self.markers:
+            if marker == tag_id:
+                print(tag_id, marker)
+                marker_pose_stamped = self.markers[marker].pose
                 break
 
         marker_pos = marker_pose_stamped.pose.position
@@ -110,6 +115,7 @@ def main():
   commandlist = pickle.load(loadfile)
   for item in commandlist:
     if isinstance(item, tuple):
+        print(item)
         ar.go_to_pose(*item)
     elif item == "open":
         ar.open_gripper()
