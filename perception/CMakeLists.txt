@@ -112,6 +112,7 @@ catkin_package(
    perception_crop
    perception_downsample
    perception_segmentation
+   perception_box_fitter
 #  CATKIN_DEPENDS roscpp rospy
 #  DEPENDS system_lib
 )
@@ -138,6 +139,8 @@ add_dependencies(perception_downsample ${${PROJECT_NAME}_EXPORTED_TARGETS} ${cat
 target_link_libraries(perception_downsample ${catkin_LIBRARIES})
 add_library(perception_segmentation src/segmentation.cpp)
 add_dependencies(perception_segmentation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_library(perception_box_fitter src/box_fitter.cpp)
+add_dependencies(perception_box_fitter ${${PROJECT_NAME}_EXPORTED_TARGETS}     ${catkin_EXPORTED_TARGETS})
 # )
 
 ## Add cmake target dependencies of the library
@@ -178,6 +181,7 @@ target_link_libraries(perception_point_cloud_demo
   perception_crop
   perception_downsample
   perception_segmentation
+  perception_box_fitter
   ${catkin_LIBRARIES}
 )
 
