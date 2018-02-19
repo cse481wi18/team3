@@ -1,6 +1,6 @@
 <launch>
   <!-- adjust how clusters should form. Smaller the value, the more separated each clusters are. Bigger, more likely objects will be in the same cluster -->
-  <param name="ec_cluster_tolerance" value="0.02" />
+  <param name="ec_cluster_tolerance" value="0.03" />
   <!-- minimimum size of cluster -->
   <param name="ec_min_cluster_size" value="70" />
   <!-- maximum size of cluster -->

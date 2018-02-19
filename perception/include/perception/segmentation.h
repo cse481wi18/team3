@@ -9,14 +9,6 @@
 #include "perception/object.h"
 
 namespace perception {
-// Does a complete tabletop segmentation pipeline.
-// //
-// // Args:
-// //  cloud: The point cloud with the surface and the objects above it.
-// //  objects: The output objects.
-void SegmentTabletopScene(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
-                          std::vector<Object>* objects);
-
 
 // Finds the largest horizontal surface in the given point cloud.
 // This is useful for adding a collision object to MoveIt.
@@ -54,5 +46,12 @@ class Segmenter {
   ros::Publisher surface_points_pub_;
   ros::Publisher marker_pub_;
   ros::Publisher above_surface_pub_;
+  // Does a complete tabletop segmentation pipeline
+  //
+  // Args:
+  //  cloud: the point cloud with the surface and the objects above it.
+  //  objects: the output objects
+  void SegmentTabletopScene(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
+                            std::vector<Object>* objects);
 };
 }  // namespace perception
