@@ -7,6 +7,7 @@
 #include "geometry_msgs/Vector3.h"
 #include "pcl/ModelCoefficients.h"
 #include "perception/object.h"
+#include "perception/object_recognizer.h"
 
 namespace perception {
 
@@ -36,22 +37,26 @@ void GetAxisAlignedBoundingBox(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
 void SegmentSurfaceObjects(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
                            pcl::PointIndices::Ptr surface_indices,
                            std::vector<pcl::PointIndices>* object_indices);
-
+// Does a complete tabletop segmentation pipeline
+//
+// Args:
+//  cloud: the point cloud with the surface and the objects above it.
+//  objects: the output objects
+void SegmentTabletopScene(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
+                          std::vector<Object>* objects);
 class Segmenter {
  public:
-  Segmenter(const ros::Publisher& surface_points_pub, const ros::Publisher& marker_pub, const ros::Publisher& above_surface_pub);
+  Segmenter(const ros::Publisher& surface_points_pub,
+            const ros::Publisher& marker_pub,
+            const ros::Publisher& above_surface_pub,
+            const ObjectRecognizer& recognizer);
   void Callback(const sensor_msgs::PointCloud2& msg);
 
  private:
   ros::Publisher surface_points_pub_;
   ros::Publisher marker_pub_;
   ros::Publisher above_surface_pub_;
-  // Does a complete tabletop segmentation pipeline
-  //
-  // Args:
-  //  cloud: the point cloud with the surface and the objects above it.
-  //  objects: the output objects
-  void SegmentTabletopScene(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
-                            std::vector<Object>* objects);
+  ObjectRecognizer recognizer_;
+  
 };
 }  // namespace perception

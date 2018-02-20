@@ -1,3 +1,6 @@
+#include <math.h>
+#include <sstream>
+#include "perception/object_recognizer.h"
 #include "perception/segmentation.h"
 #include "perception/object.h"
 #include "perception/box_fitter.h"
@@ -24,6 +27,7 @@ typedef pcl::PointXYZRGB PointC;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
 
 namespace perception {
+  
   void SegmentSurface(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices, pcl::ModelCoefficients::Ptr coeff) {
     // I didn't realize this was already supposed to be done
     //std::cerr << "Before filtering, there are " << cloud->size() << " points" << std::endl;
@@ -81,14 +85,17 @@ namespace perception {
     }
   }
 
-  Segmenter::Segmenter(const ros::Publisher& surface_points_pub, const ros::Publisher& marker_pub, const ros::Publisher& above_surface_pub)
-    : surface_points_pub_(surface_points_pub), marker_pub_(marker_pub), above_surface_pub_(above_surface_pub) {}
+  Segmenter::Segmenter(const ros::Publisher& surface_points_pub,
+                       const ros::Publisher& marker_pub,
+                       const ros::Publisher& above_surface_pub,
+                       const ObjectRecognizer& recognizer)
+    : surface_points_pub_(surface_points_pub), marker_pub_(marker_pub), above_surface_pub_(above_surface_pub), recognizer_(recognizer) {}
 
   // Does a complete tabletop segmentation pipeline
   // Args:
   //  cloud:    the point cloud with the surface and the objects above it.
   //  objects:  the output objects
-  void Segmenter::SegmentTabletopScene(PointCloudC::Ptr cloud, std::vector<Object> *objects) {
+  void SegmentTabletopScene(PointCloudC::Ptr cloud, std::vector<Object> *objects) {
     // should be same as callback, but w/ visualization code removed
     // TODO: many bugs here. We are not correctly identifying the objects using FitBox :(
     pcl::PointIndices::Ptr table_inliers(new pcl::PointIndices());
@@ -102,8 +109,8 @@ namespace perception {
     extract.filter(*subset_cloud);
 
     sensor_msgs::PointCloud2 out_cloud;
-    pcl:toROSMsg(*subset_cloud, out_cloud);
-    surface_points_pub_.publish(out_cloud);
+    //pcl:toROSMsg(*subset_cloud, out_cloud);
+    //surface_points_pub_.publish(out_cloud);
 
     // Segment surface ~~~~~~~~~~~~THIS WAS NOT PART OF original Callback function
     pcl::ModelCoefficients::Ptr coeff(new pcl::ModelCoefficients());
@@ -115,14 +122,14 @@ namespace perception {
     extract.filter(*cloud_out);
     std::cerr << "The good cloud has " << cloud_out->size() << " points since the input has " << cloud->size() << " points and we remove " << table_inliers->indices.size() << " points. " << std::endl;
     // list of point clusters for each segmented object
+    // Extracting the scene above the plane!
     std::vector<pcl::PointIndices> object_indices;
     SegmentSurfaceObjects(cloud, table_inliers, &object_indices);
-    std::cerr << "THIS VALUE SHOULD NOT BE 0! OTHERWISE, WE FOUND NO POINTS ABOVE SURFACE " << object_indices.size();
 
     // publish all above-surface points
     sensor_msgs::PointCloud2 msg_out;
-    pcl::toROSMsg(*cloud_out, msg_out);
-    above_surface_pub_.publish(msg_out);
+    //pcl::toROSMsg(*cloud_out, msg_out);
+    //above_surface_pub_.publish(msg_out);
 
     for (size_t i = 0; i < object_indices.size(); ++i) {
       // Reify indices into a point cloud of the object.
@@ -139,7 +146,13 @@ namespace perception {
       geometry_msgs::Pose table_pose;
       PointCloudC::Ptr extract_out(new PointCloudC());
       perception::FitBox(*object_cloud, coeff, *extract_out, shape, table_pose);
-      perception::Object current;
+      if (extract_out->at(0).r == 0) {
+        std::cerr << "is 0" << std::endl;
+      } else {
+        std::cerr << "not 0!" << std::endl;
+      }
+
+     perception::Object current;
       current.name = "none"; // TODO: change this
       current.confidence = 1.0; // TODO: change this
       current.cloud = extract_out;
@@ -174,6 +187,34 @@ namespace perception {
       object_marker.color.g = 1;
       object_marker.color.a = 0.3;
       marker_pub_.publish(object_marker);
+
+      // Recognize the object
+      std::string name;
+      double confidence;
+      // recognize the object with the recognizer_.
+      recognizer_.Recognize(object, &name, &confidence);
+      confidence = round(1000 * confidence) / 1000;
+      std::stringstream ss;
+      ss << name << " (" << confidence << ")";
+
+      // Publish the recognition result.
+      visualization_msgs::Marker name_marker;
+      name_marker.ns = "recognition";
+      name_marker.id = i;
+      name_marker.header.frame_id = "base_link";
+      name_marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+      name_marker.pose.position = object.pose.position;
+      name_marker.pose.position.z += 0.1;
+      name_marker.pose.orientation.w = 1;
+      name_marker.scale.x = 0.025;
+      name_marker.scale.y = 0.025;
+      name_marker.scale.z = 0.025;
+      name_marker.color.r = 0;
+      name_marker.color.g = 0;
+      name_marker.color.b = 1.0;
+      name_marker.color.a = 1.0;
+      name_marker.text = ss.str();
+      marker_pub_.publish(name_marker);
     }
   }
 
@@ -195,6 +236,7 @@ namespace perception {
 
     ROS_INFO("There are %ld points above the table", above_surface_indices->indices.size());
 
+    // This is where we do the clustering!
     double cluster_tolerance;
     int min_cluster_size, max_cluster_size;
     ros::param::param("ec_cluster_tolerance", cluster_tolerance, 0.01);
@@ -213,7 +255,8 @@ namespace perception {
     size_t min_size = std::numeric_limits<size_t>::max();
     size_t max_size = std::numeric_limits<size_t>::min();
     for (size_t i = 0; i < object_indices->size(); ++i) {
-      // TODO: implement this
+      // Finds how many points are in the smallest cluster and how
+      //  many points are in the largest cluster
       size_t cluster_size = object_indices->at(i).indices.size(); // holds int32s
       if (cluster_size < min_size) {
         min_size = cluster_size;
