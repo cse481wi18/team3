@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
   const perception::Object& object = objects[0];
   perception_msgs::ObjectFeatures features;
   features.object_name = label;
-  perception::ExtractColorFeatures(object, &features);
+  perception::ExtractFeatures(object, &features);
 
   rosbag::Bag bag_out;
   bag_out.open(label + "_label.bag", rosbag::bagmode::Write);

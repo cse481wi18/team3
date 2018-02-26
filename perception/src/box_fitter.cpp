@@ -141,6 +141,9 @@ bool FitBox(const pcl::PointCloud<pcl::PointXYZRGB>& input,
   for (size_t j = 0; j < input.size(); ++j) {
     pcl::PointXYZRGB p;
     p.getVector3fMap() = transformation * (input[j].getVector3fMap() - origin);
+    //p.r = input[j].r;
+    //p.g = input[j].g;
+    //p.b = input[j].b;
     output.push_back(p);
   }
   return true;

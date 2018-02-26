@@ -146,16 +146,11 @@ namespace perception {
       geometry_msgs::Pose table_pose;
       PointCloudC::Ptr extract_out(new PointCloudC());
       perception::FitBox(*object_cloud, coeff, *extract_out, shape, table_pose);
-      if (extract_out->at(0).r == 0) {
-        std::cerr << "is 0" << std::endl;
-      } else {
-        std::cerr << "not 0!" << std::endl;
-      }
 
      perception::Object current;
       current.name = "none"; // TODO: change this
       current.confidence = 1.0; // TODO: change this
-      current.cloud = extract_out;
+      current.cloud = object_cloud;
       current.pose = table_pose;
       current.dimensions.x = shape.dimensions[0];
       current.dimensions.y = shape.dimensions[1];

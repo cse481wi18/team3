@@ -5,27 +5,40 @@
 
 #include "perception/object.h"
 #include "perception_msgs/ObjectFeatures.h"
+#include "ros/ros.h"
 
 using namespace std;
 
 namespace perception {
+
+void ExtractFeatures(const Object& object,
+                     perception_msgs::ObjectFeatures* features) {
+  ExtractSizeFeatures(object, features);
+  ExtractColorFeatures(object, features);
+}
+
+  // "x" dimension is always the smallest of x and y to account for rotations.
+  // z always points up.
 void ExtractSizeFeatures(const Object& object,
                          perception_msgs::ObjectFeatures* features) {
+  double weight;
+  ros::param::param("size_weight", weight, 2.0);
   // "x" dimension is always the smallest of x and y to account for rotations.
   // z always points up.
   features->names.push_back("box_dim_x");
-  features->values.push_back(std::min(object.dimensions.x, object.dimensions.y));
+  features->values.push_back(
+      weight * std::min(object.dimensions.x, object.dimensions.y));
   features->names.push_back("box_dim_y");
-  features->values.push_back(std::max(object.dimensions.x, object.dimensions.y));
+  features->values.push_back(
+      weight * std::max(object.dimensions.x, object.dimensions.y));
   features->names.push_back("box_dim_z");
-  features->values.push_back(object.dimensions.z);
+  features->values.push_back(weight * object.dimensions.z);
 }
 
 void ExtractColorFeatures(const Object& object,
                           perception_msgs::ObjectFeatures* features) {
   std::vector<double> color_features;
   color_features.resize(125);
-  cout << "HELLOOOOO!!!!" << object.cloud->size() << endl;
   for (size_t i = 0; i < object.cloud->size(); ++i) {
     const pcl::PointXYZRGB& pt = object.cloud->at(i);
     // Reduce the color space to just 5 values (255 / 51) per channel.
