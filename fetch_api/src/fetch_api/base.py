@@ -131,7 +131,7 @@ class Base(object):
 
         # Local function to check if we're "there yet"
         def robot_has_turned_full_distance():
-            epsilon = 0.05
+            epsilon = 0.03
             return remaining_angle() < epsilon
 
         # Sampling rate for position updates
