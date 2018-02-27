@@ -51,11 +51,10 @@ class ActionRunner(object):
         self.markers = {}
         # get initial position of markers... it will continue updating in background
         reachable = False
-        while len(self.reader.markers) == 0:
-            print("waiting")
-        markers = self.reader.markers
         while not reachable:
-            m = markers[0]
+            while len(self.reader.markers) == 0:
+                print("waiting")
+            m = self.reader.markers[0]
             pose_stamped = PoseStamped(pose=m.pose.pose)
             pose_stamped.header.frame_id = "/base_link"
             pose_stamped.header.stamp = rospy.Time.now()
@@ -64,26 +63,39 @@ class ActionRunner(object):
             if abs(turn) > 0.07:
                 self.base.turn(turn)
                 print("done adjusting")
-                rospy.sleep(3)
-            markers = self.reader.markers
-            if abs(compute_turn(markers[0].pose.pose)) <= 0.2:
+                rospy.sleep(5)
+                if abs(compute_turn(m.pose.pose)) <= 0.1:
+                    break
+                else:
+                    continue
+            if abs(compute_turn(m.pose.pose)) <= 0.1:
                 break
+
         print("checking forward...")
-        """
-        rospy.sleep(7)
-        if self.arm.compute_ik(pose_stamped):
-            print("reachable")
-            reachable = True
-        else:
-            reachable = False
-            print("marker is too far away from the robot")
-            computed_forward = compute_dist(pose_stamped.pose) - 0.7
-            max_forward = 0.05 if computed_forward < 0.3 else computed_forward
-            self.base.go_forward(max_forward)
-            print("move")
+        reachable = False
+        while not reachable:
+            while len(self.reader.markers) == 0:
+                print("waiting")
+            m = self.reader.markers[0]
+            pose_stamped = PoseStamped(pose=deepcopy(m.pose.pose))
+            pose_stamped.header.frame_id = "/base_link"
+            pose_stamped.header.stamp = rospy.Time.now()
+
+            print(self.arm.compute_ik(pose_stamped))
+            if self.arm.compute_ik(pose_stamped):
+                print("reachable")
+                reachable = True
+            else:
+                reachable = False
+                print("marker is too far away from the robot")
+                computed_forward = compute_dist(pose_stamped.pose) - 1.5
+                print(computed_forward)
+                max_forward = 0.05 if computed_forward < 0.7 else computed_forward
+                print("I AM MOVING THIS MUCH: " + str(max_forward))
+                self.base.go_forward(max_forward)
+                print("move")
         # marker is now reachable
         self.markers[m.id] = m
-        """
         print("I am done!")
 
     def go_to_pose(self, tag_id, wrist_in_marker):
