@@ -131,15 +131,19 @@ class Base(object):
 
         # Local function to check if we're "there yet"
         def robot_has_turned_full_distance():
-            epsilon = 0.03
+            epsilon = 0.05
             return remaining_angle() < epsilon
 
         # Sampling rate for position updates
         rate = rospy.Rate(10)
 
+        counter = 0
+
         # Keep moving by <speed> until we've traveled the full distance
         # Sampling every <rate>
-        while (not robot_has_turned_full_distance()):
+        while (not robot_has_turned_full_distance() and counter <= 50):
+            counter += 1
+            print(remaining_angle())
             direction = -1 if angular_distance < 0 else 1
             speed = max(0.25, min(speed, remaining_angle()))
             self.move(0, direction * speed)
