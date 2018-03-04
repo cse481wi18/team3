@@ -21,6 +21,11 @@ import rospy
 from robot_controllers_msgs.msg import QueryControllerStatesAction, QueryControllerStatesGoal, ControllerState
 import actionlib
 from math import atan, sqrt
+from transformation_api import *
+from visualization_msgs.msg import Marker
+
+
+MIN_TURN_RADS = 0.1
 
 def wait_for_time():
     while rospy.Time().now().to_sec() == 0:
@@ -32,8 +37,21 @@ def compute_turn(pose):
 def compute_dist(pose):
     return sqrt(pow(pose.position.x, 2) + pow(pose.position.y, 2))
 
-
-
+def draw_debug_marker(pose, rgba=[0.0,0.5,0.5,0.5]):
+    marker = Marker()
+    marker.type = Marker.CUBE
+    marker.header = pose.header
+    marker.pose = pose.pose
+    marker.scale.x = 0.15
+    marker.scale.y = 0.15
+    marker.scale.z = 0.15
+    marker.color.r = rgba[0]
+    marker.color.g = rgba[1]
+    marker.color.b = rgba[2]
+    marker.color.a = rgba[3]
+    marker_publisher = rospy.Publisher('debug_marker', Marker, queue_size=10)
+    rospy.sleep(0.5)
+    marker_publisher.publish(marker)
 class ActionRunner(object):
     def __init__(self):
         print("create ActionRunner")
@@ -52,61 +70,66 @@ class ActionRunner(object):
         # get initial position of markers... it will continue updating in background
         reachable = False
         while len(self.reader.markers) == 0:
-            print("waiting")
+            print("waiting for marker")
+            rospy.sleep(0.5)
+
         markers = self.reader.markers
+        print("Original marker pose is " + str(markers[0]))
+        debug_marker_pose = PoseStamped(pose=markers[0].pose.pose)
+        debug_marker_pose.header.stamp = rospy.Time.now()
+        debug_marker_pose.header.frame_id = "/base_link"
+        draw_debug_marker(debug_marker_pose, [0,1,0,0.5])
+        original_pose_stamped = dot_poses(lookup_transform("/odom","/base_link"), markers[0].pose.pose)
+        print("Adjusting orientation")
         while not reachable:
             m = markers[0]
             pose_stamped = PoseStamped(pose=m.pose.pose)
             pose_stamped.header.frame_id = "/base_link"
             pose_stamped.header.stamp = rospy.Time.now()
             turn = compute_turn(deepcopy(pose_stamped.pose))
-            print(turn)
+            print("\tComputed turn:" + str(turn))
             if abs(turn) > 0.07:
                 self.base.turn(turn)
-                print("done adjusting")
-                rospy.sleep(3)
+                rospy.sleep(1)
+                print("\tExecuted turn")
             markers = self.reader.markers
-            if abs(compute_turn(markers[0].pose.pose)) <= 0.2:
+            if abs(compute_turn(markers[0].pose.pose)) <= MIN_TURN_RADS:
+                print("\tComputed turn was less than " + str(MIN_TURN_RADS) + ": " + str(abs(compute_turn(markers[0].pose.pose))))
+                print("...good enough")
                 break
-        print("checking forward...")
-        """
-        rospy.sleep(7)
+        print("Re-Orientation complete!")
+        print("Adjusting forward position...")
+
         if self.arm.compute_ik(pose_stamped):
-            print("reachable")
+            print("\tMarker is already reachable")
             reachable = True
         else:
             reachable = False
-            print("marker is too far away from the robot")
-            computed_forward = compute_dist(pose_stamped.pose) - 0.7
-            max_forward = 0.05 if computed_forward < 0.3 else computed_forward
+            print("\tMarker is too far away from the robot")
+            computed_forward = compute_dist(pose_stamped.pose) - .7
+            print("\tComputed forward distance is " + str(computed_forward))
+            max_forward = 0.05 if computed_forward > 3 else computed_forward
             self.base.go_forward(max_forward)
-            print("move")
+            print("\tMoving forward by " + str(max_forward))
         # marker is now reachable
         self.markers[m.id] = m
-        """
-        print("I am done!")
+        print("Moved to location")
+        # move gripper
+        #target_pose = PoseStamped(pose=original_pose_stamped.pose)
+        #target_pose = PoseStamped(pose=markers[0].pose.pose)
+        original_pose_stamped.pose.position.x -= 0.2
+        target_pose = dot_poses(lookup_transform("/base_link", "/odom"), original_pose_stamped.pose)
+        target_pose.header.frame_id = "/base_link"
+        target_pose.header.stamp = rospy.Time.now()
+        print("Marker pose after moving is " + str(target_pose))
+        if self.arm.compute_ik(target_pose):
+            print("reachable")
+            print("move_to_pose result: " + str(self.arm.move_to_pose(target_pose)))
+        else:
+            print("not reachable :(")
+        draw_debug_marker(target_pose, [0,0,1,0.5])
+        rospy.spin()
 
-    def go_to_pose(self, tag_id, wrist_in_marker):
-        tag_id = int(tag_id)
-        print(tag_id)
-        print(wrist_in_marker)
-        marker_pose_stamped = None
-        for marker in self.markers:
-            if marker == tag_id:
-                print(tag_id, marker)
-                marker_pose_stamped = self.markers[marker].pose
-                break
-
-        marker_pos = marker_pose_stamped.pose.position
-        marker_ori = marker_pose_stamped.pose.orientation
-        marker_in_base = np.dot(tft.translation_matrix([marker_pos.x, marker_pos.y, marker_pos.z]), tft.quaternion_matrix([marker_ori.x, marker_ori.y, marker_ori.z, marker_ori.w]))
-
-        wrist_in_base = np.dot(marker_in_base, wrist_in_marker)
-        pose = Pose(Point(*tft.translation_from_matrix(wrist_in_base)), Quaternion(*tft.quaternion_from_matrix(wrist_in_base)))
-        pose_stamped = PoseStamped(pose=pose)
-        pose_stamped.header.frame_id = "/base_link"
-        pose_stamped.header.stamp = rospy.Time.now()
-        self.arm.move_to_pose(pose_stamped)
 
     class ArTagReader(object):
         def __init__(self):
@@ -127,20 +150,6 @@ def main():
   #  start the arm controller
   # wtf
   ar = ActionRunner()
-  
-  """
-  print("Give me the program name!")
-  name = raw_input(">")
-  name = name.strip()
-  loadfile = open('/home/team3/lab_29_actions/' + name, 'rb')
-  commandlist = pickle.load(loadfile)
-  for item in commandlist:
-    if isinstance(item, tuple):
-        print(item)
-        ar.go_to_pose(*item)
-
-  loadfile.close()
-  """
 
 if __name__ == '__main__':
   main()

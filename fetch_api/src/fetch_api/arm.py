@@ -73,7 +73,7 @@ def moveit_error_string(val):
     elif val == MoveItErrorCodes.NO_IK_SOLUTION:
         return 'NO_IK_SOLUTION'
     else:
-        return 'UNKNOWN_ERROR_CODE'
+        return 'UNKNOWN_ERROR_CODE: ' + str(val)
 
 
 

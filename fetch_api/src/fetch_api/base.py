@@ -141,7 +141,7 @@ class Base(object):
 
         # Keep moving by <speed> until we've traveled the full distance
         # Sampling every <rate>
-        while (not robot_has_turned_full_distance() and counter <= 50):
+        while (not robot_has_turned_full_distance() and counter <= 20):
             counter += 1
             print(remaining_angle())
             direction = -1 if angular_distance < 0 else 1
