@@ -83,6 +83,7 @@ class ActionRunner(object):
         print("Adjusting orientation")
         while not reachable:
             m = markers[0]
+            m = self.reader.markers[0]
             pose_stamped = PoseStamped(pose=m.pose.pose)
             pose_stamped.header.frame_id = "/base_link"
             pose_stamped.header.stamp = rospy.Time.now()
@@ -153,15 +154,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-
-
-
-"""
-mbagoal = MoveBaseActionGoal()
-mbgoal = MoveBaseGoal()
-mbgoal.target_pose = stampedCoPose #potential issue here
-mbagoal.goal = mbgoal
-#mbagoal.header =
-#mbagoal.goal_id =
-pub.publish(mbagoal)
-"""
