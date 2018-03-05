@@ -1,35 +1,38 @@
 #! /usr/bin/env python
 
-import math
+import actionlib
 import copy
+import geometry_msgs.msg
+import math
+import nav_msgs.msg
+import numpy as np
 import rospy
-from geometry_msgs.msg import Twist, Vector3
-from nav_msgs.msg import Odometry
-
 import tf.transformations as tft
+
 
 class Base(object):
     """Base controls the mobile base portion of the Fetch robot.
 
     Sample usage:
         base = fetch_api.Base()
+
+        base.go_forward(0.1)
+        base.turn(30 * math.pi / 180)
+
         while CONDITION:
             base.move(0.2, 0)
         base.stop()
     """
 
     def __init__(self):
-        # Publish Twist (speed + angular speed)
-        self.pub = rospy.Publisher('cmd_vel', Twist)
-        # Subscribe to odometry
-        self._odom_sub = rospy.Subscriber('odom', Odometry, callback=self._odom_callback)
-        # Copy of the most recent odometry message
-        self._latest_odom = None
-
-    def _odom_callback(self, msg):
-        self._latest_odom = msg
-
-# Lab 2-3
+        self._publisher = rospy.Publisher(
+            'cmd_vel', geometry_msgs.msg.Twist, queue_size=5)
+        self.odom_sub = rospy.Subscriber(
+            'odom',
+            nav_msgs.msg.Odometry,
+            callback=self._odom_callback,
+            queue_size=10)
+        self.odom = None
 
     def move(self, linear_speed, angular_speed):
         """Moves the base instantaneously at given linear and angular speeds.
@@ -43,16 +46,10 @@ class Base(object):
             angular_speed: The rotation speed, in radians/second. A positive
                 value means the robot should rotate clockwise.
         """
-        self.pub.publish(Twist(Vector3(linear_speed, 0, 0), Vector3(0, 0, angular_speed)))
-        # rospy.logerr('Set velocity to x: ' + str(linear_speed) + " angle z: " + str(angular_speed));
-
-    def stop(self):
-        """Stops the mobile base from moving.
-        """
-        self.pub.publish(Twist(Vector3(0, 0, 0), Vector3(0, 0, 0)))
-        rospy.logerr('Set velocity to 0.');
-
-# Lab 4
+        twist = geometry_msgs.msg.Twist()
+        twist.linear.x = linear_speed
+        twist.angular.z = angular_speed
+        self._publisher.publish(twist)
 
     def go_forward(self, distance, speed=0.1):
         """Moves the robot a certain distance.
@@ -60,35 +57,24 @@ class Base(object):
         It's recommended that the robot move slowly. If the robot moves too
         quickly, it may overshoot the target. Note also that this method does
         not know if the robot's path is perturbed (e.g., by teleop). It stops
-        once the distance traveled is equal to the given distance or more.
+        once the distance traveled is equal to the given distance.
+
+        You cannot use this method to move less than 1 cm.
 
         Args:
-            distance: The distance, in meters, to move. A positive value
+            distance: The distance, in meters, to rotate. A positive value
                 means forward, negative means backward.
-            speed: The speed to travel, in meters/second.
+            max_speed: The maximum speed to travel, in meters/second.
         """
-
-        # Sleep until we've received at least one message from /odom
-        while (self._latest_odom is None):
+        while self.odom is None:
             rospy.sleep(0.1)
-
-        # Deep copy the start position so that we have a fixed reference point
-        start_pose = copy.deepcopy(self._latest_odom.pose.pose)
-        start_x = start_pose.position.x
-
-        # Local function to check if we're "there yet"
-        def robot_has_gone_forward_full_distance():
-            current_x = self._latest_odom.pose.pose.position.x
-            current_x_displacement = current_x - start_x
-            # Check that we've displaced by at least the distance requested
-            return abs(current_x_displacement) >= abs(distance)
-
-        # Sampling rate for position updates
-        rate = rospy.Rate(10)
-
-        # Keep moving by <speed> until we've traveled the full distance
-        # Sampling every <rate>
-        while (not robot_has_gone_forward_full_distance()):
+        start = copy.deepcopy(self.odom)
+        rate = rospy.Rate(25)
+        distance_from_start = self._linear_distance(start, self.odom)
+        while distance_from_start < math.fabs(distance):
+            distance_from_start = self._linear_distance(start, self.odom)
+            if distance_from_start >= math.fabs(distance):
+                return
             direction = -1 if distance < 0 else 1
             self.move(direction * speed, 0)
             rate.sleep()
@@ -96,55 +82,91 @@ class Base(object):
     def turn(self, angular_distance, speed=0.5):
         """Rotates the robot a certain angle.
 
+        This illustrates how to turn the robot by checking that the X-axis of
+        the robot matches that of the goal.
+
         Args:
             angular_distance: The angle, in radians, to rotate. A positive
                 value rotates counter-clockwise.
-            speed: The angular speed to rotate, in radians/second.
+            speed: The maximum angular speed to rotate, in radians/second.
         """
-
-        # Sleep until we've received at least one message from /odom
-        while (self._latest_odom is None):
+        while self.odom is None:
             rospy.sleep(0.1)
+        direction = -1 if angular_distance < 0 else 1
 
-        # Deep copy the start position so that we have a fixed reference point
-        start_pose = copy.deepcopy(self._latest_odom.pose.pose)
+        current_yaw = self._yaw_from_quaternion(self.odom.orientation)
+        goal_yaw = current_yaw + angular_distance
+        goal_x_axis = np.array([math.cos(goal_yaw), math.sin(goal_yaw), 0])
 
-        # Orientation is a quaternion; we need to convert it to get yaw
-        def quaternion_to_yaw(q):
-            rotation_matrix = tft.quaternion_matrix([q.x, q.y, q.z, q.w])
-            x = rotation_matrix[0, 0] # The x value of the x-axis (first column)
-            y = rotation_matrix[1, 0] # The y value of the x-axis
-            theta_rads = math.atan2(y, x) % (2 * math.pi) # Radians in [0, 2pi]
-            return theta_rads
+        rate = rospy.Rate(100)
+        x_axis = self._x_axis_from_quaternion(self.odom.orientation)
+        while not np.allclose(x_axis, goal_x_axis, atol=0.01):
+            self.move(0, direction * speed)
+            x_axis = self._x_axis_from_quaternion(self.odom.orientation)
+            rate.sleep()
 
-        start_yaw = quaternion_to_yaw(start_pose.orientation)
+    def turn_alternate(self, angular_distance, speed=0.5):
+        """Rotates the robot a certain angle.
 
-        def remaining_angle():
-            # (see canvas for explanation)
-            current_yaw = quaternion_to_yaw(self._latest_odom.pose.pose.orientation)
-            goal_yaw = start_yaw + angular_distance
-            if angular_distance > 0:
-                distance_left = (goal_yaw - current_yaw) % (2 * math.pi)
-            else:
-                distance_left = (current_yaw - goal_yaw) % (2 * math.pi)
-            return distance_left
+        This illustrates how to turn the robot using yaw angles and careful
+        accounting.
 
-        # Local function to check if we're "there yet"
-        def robot_has_turned_full_distance():
-            epsilon = 0.05
-            return remaining_angle() < epsilon
+        Args:
+            angular_distance: The angle, in radians, to rotate. A positive
+                value rotates counter-clockwise.
+            speed: The maximum angular speed to rotate, in radians/second.
+        """
+        while self.odom is None:
+            rospy.sleep(0.1)
+        direction = -1 if angular_distance < 0 else 1
 
-        # Sampling rate for position updates
-        rate = rospy.Rate(10)
+        current_coord = self._yaw_from_quaternion(self.odom.orientation) % (
+            2 * math.pi)
+        end_coord = (current_coord + angular_distance) % (2 * math.pi)
+        rate = rospy.Rate(25)
 
-        counter = 0
-
-        # Keep moving by <speed> until we've traveled the full distance
-        # Sampling every <rate>
-        while (not robot_has_turned_full_distance() and counter <= 20):
-            counter += 1
-            print(remaining_angle())
-            direction = -1 if angular_distance < 0 else 1
-            speed = max(0.25, min(speed, remaining_angle()))
+        while True:
+            current_coord = self._yaw_from_quaternion(
+                self.odom.orientation) % (2 * math.pi)
+            remaining = (direction *
+                         (end_coord - current_coord)) % (2 * math.pi)
+            if remaining < 0.01:
+                return
+            speed = max(0.25, min(1, remaining))
             self.move(0, direction * speed)
             rate.sleep()
+
+    def stop(self):
+        """Stops the mobile base from moving.
+        """
+        self.move(0, 0)
+
+    def _odom_callback(self, msg):
+        self.odom = msg.pose.pose
+
+    @staticmethod
+    def _linear_distance(pose1, pose2):
+        pos1 = pose1.position
+        pos2 = pose2.position
+        dx = pos1.x - pos2.x
+        dy = pos1.y - pos2.y
+        dz = pos1.z - pos2.z
+        return math.sqrt(dx * dx + dy * dy + dz * dz)
+
+    @staticmethod
+    def _x_axis_from_quaternion(q):
+        m = tft.quaternion_matrix([q.x, q.y, q.z, q.w])
+        return m[:3, 0]  # First column
+
+    @staticmethod
+    def _yaw_from_quaternion(q):
+        m = tft.quaternion_matrix([q.x, q.y, q.z, q.w])
+        return math.atan2(m[1, 0], m[0, 0])
+
+    @staticmethod
+    def _angular_distance(pose1, pose2):
+        q1 = pose1.orientation
+        q2 = pose2.orientation
+        y1 = Base._yaw_from_quaternion(q1)
+        y2 = Base._yaw_from_quaternion(q2)
+        return math.fabs(y1 - y2) % (2 * math.pi)

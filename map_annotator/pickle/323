@@ -18,7 +18,7 @@ g2
 Ntp7
 Rp8
 (lp9
-I354323
+I119
 ag0
 (cgenpy.rostime
 Time
@@ -27,9 +27,9 @@ g2
 Ntp11
 Rp12
 (lp13
-I3543
-aI328000000
-abaS'odom'
+I1520216346
+aI351118845
+abaS'map'
 p14
 abag0
 (cgeometry_msgs.msg._Pose
@@ -47,9 +47,9 @@ g2
 Ntp20
 Rp21
 (lp22
-F0.6
-aF-0.1
-aF0.7
+F5.0094959976138105
+aF-2.3966715991808014
+aF0.0
 abag0
 (cgeometry_msgs.msg._Quaternion
 Quaternion
@@ -58,8 +58,8 @@ g2
 Ntp24
 Rp25
 (lp26
-I0
-aI0
-aF0.38268343
-aF0.92387963
+F0.0
+aF0.0
+aF-0.7313473730282216
+aF0.6820051465822815
 ababab.

@@ -1,23 +1,17 @@
 #!/usr/bin/env python
 
 import actionlib
-from control_msgs.msg import FollowJointTrajectoryAction
-from control_msgs.msg import PointHeadAction
-from control_msgs.msg import PointHeadGoal
-from control_msgs.msg import FollowJointTrajectoryGoal
-from trajectory_msgs.msg import JointTrajectoryPoint
-from trajectory_msgs.msg import JointTrajectory
-from geometry_msgs.msg import PointStamped
-from geometry_msgs.msg import Point
-from std_msgs.msg import Header
+import control_msgs.msg
+import trajectory_msgs.msg
+
 import math
 import rospy
 
-LOOK_AT_ACTION_NAME = 'head_controller/point_head'
 PAN_TILT_ACTION_NAME = 'head_controller/follow_joint_trajectory'
+LOOK_AT_ACTION_NAME = 'head_controller/point_head'
 PAN_JOINT = 'head_pan_joint'
 TILT_JOINT = 'head_tilt_joint'
-PAN_TILT_TIME = 2.5  # How many seconds it should take to move the head.
+PAN_TILT_TIME = 2.5
 
 
 class Head(object):
@@ -32,21 +26,22 @@ class Head(object):
         head.look_at('base_link', 1, 0, 0.3)
         head.pan_tilt(0, math.pi/4)
     """
-    MIN_PAN = -0.5 * math.pi
-    MAX_PAN = 0.5 * math.pi
-    MIN_TILT = -0.25 * math.pi
-    MAX_TILT = 0.5 * math.pi
+    MIN_PAN = -math.pi / 2
+    MAX_PAN = math.pi / 2
+    MIN_TILT = -math.pi / 2
+    MAX_TILT = math.pi / 4
 
     def __init__(self):
-        self.panClient = actionlib.SimpleActionClient(PAN_TILT_ACTION_NAME, FollowJointTrajectoryAction)
-        rospy.logerr("initialized pan client")
-        self.panClient.wait_for_server()
-        rospy.logerr("got pan server response")
-
-        self.lookClient = actionlib.SimpleActionClient(LOOK_AT_ACTION_NAME, PointHeadAction)
-        rospy.logerr("initialized look client")
-        self.lookClient.wait_for_server()
-        rospy.logerr("got look server response")
+        self.traj_client = actionlib.SimpleActionClient(
+            PAN_TILT_ACTION_NAME, control_msgs.msg.FollowJointTrajectoryAction)
+        self.point_client = actionlib.SimpleActionClient(
+            LOOK_AT_ACTION_NAME, control_msgs.msg.PointHeadAction)
+        while not self.traj_client.wait_for_server(
+                timeout=rospy.Duration(1)) and not rospy.is_shutdown():
+            rospy.logwarn('Waiting for head trajectory server...')
+        while not self.point_client.wait_for_server(
+                timeout=rospy.Duration(1)) and not rospy.is_shutdown():
+            rospy.logwarn('Waiting for head pointing server...')
 
     def look_at(self, frame_id, x, y, z):
         """Moves the head to look at a point in space.
@@ -57,19 +52,15 @@ class Head(object):
             y: The y value of the point to look at.
             z: The z value of the point to look at.
         """
+        goal = control_msgs.msg.PointHeadGoal()
+        goal.target.header.frame_id = frame_id
+        goal.target.point.x = x
+        goal.target.point.y = y
+        goal.target.point.z = z
 
-        rospy.logerr("Looking at something.")
-        header = Header()
-        header.frame_id = frame_id
-
-        goal = PointHeadGoal()
-        goal.min_duration = rospy.Duration.from_sec(1.0)
-        goal.max_velocity = 1.57 # from hardware info
-        goal.target = PointStamped(header, Point(x, y, z))
-        self.lookClient.send_goal(goal)
-        rospy.logerr("Sent look command.")
-        self.lookClient.wait_for_result()
-        rospy.logerr("Looked at something.")
+        goal.min_duration = rospy.Duration(PAN_TILT_TIME)
+        self.point_client.send_goal(goal)
+        self.point_client.wait_for_result()
 
     def pan_tilt(self, pan, tilt):
         """Moves the head by setting pan/tilt angles.
@@ -78,25 +69,15 @@ class Head(object):
             pan: The pan angle, in radians. A positive value is clockwise.
             tilt: The tilt angle, in radians. A positive value is downwards.
         """
+        pan = min(max(pan, Head.MIN_PAN), Head.MAX_PAN)
+        tilt = min(max(tilt, Head.MIN_TILT), Head.MAX_TILT)
 
-        rospy.logerr("tilting head")
-        if pan < Head.MIN_PAN or pan > Head.MAX_PAN or tilt < Head.MIN_TILT or tilt > Head.MAX_TILT:
-            rospy.logerr("head not tilted (out of bounds)")
-            return
-        point = JointTrajectoryPoint()
-        point.positions.append(pan)
-        point.positions.append(tilt)
+        point = trajectory_msgs.msg.JointTrajectoryPoint()
+        point.positions = [pan, tilt]
         point.time_from_start = rospy.Duration(PAN_TILT_TIME)
+        goal = control_msgs.msg.FollowJointTrajectoryGoal()
 
-        trajectory = JointTrajectory()
-        trajectory.joint_names.append(PAN_JOINT)
-        trajectory.joint_names.append(TILT_JOINT)
-        trajectory.points.append(point)
-
-        goal = FollowJointTrajectoryGoal()
-        goal.trajectory = trajectory
-
-        self.panClient.send_goal(goal)
-        rospy.logerr("sent tilt")
-        self.panClient.wait_for_result()
-        rospy.logerr("tilted")
+        goal.trajectory.joint_names = [PAN_JOINT, TILT_JOINT]
+        goal.trajectory.points.append(point)
+        self.traj_client.send_goal(goal)
+        self.traj_client.wait_for_result()

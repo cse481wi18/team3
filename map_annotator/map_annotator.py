@@ -13,7 +13,7 @@ class PoseCallback(object):
     self.currentPos = None
     #self._pos_sub = rospy.Subscriber('amcl_pose', geometry_msgs.msg.PoseWithCovarianceStamped, self.callback)
     #TODO: fix this to use map instead of odom
-    rospy.Subscriber('odom', Odometry, self.callback)
+    rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, self.callback)
 
   def callback(self, msg):
     #print msg.amcl_pose.pose.pose.position
@@ -22,13 +22,6 @@ class PoseCallback(object):
     #self.currentPos = msg.pose.pose.position
     #print self.currentPos
     pose = PoseStamped()
-    msg.pose.pose.position.x = 0.6
-    msg.pose.pose.position.y = -0.1
-    msg.pose.pose.position.z = 0.7
-    msg.pose.pose.orientation.x = 0
-    msg.pose.pose.orientation.y = 0
-    msg.pose.pose.orientation.z = 0.38268343
-    msg.pose.pose.orientation.w = 0.92387963
     pose.pose = msg.pose.pose
     pose.header = msg.header
     self.currentPos = pose
