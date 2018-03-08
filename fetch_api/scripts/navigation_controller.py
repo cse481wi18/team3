@@ -12,6 +12,7 @@ class NavigationController(object):
     def __init__(self, cmd_vel_pub):
         self._cmd_vel_pub = cmd_vel_pub
         self._max_speed = 1.0 # In meters/second
+        self._max_rotation = 1.5
 
     def nav_cmd_vel_callback(self, twist):
         vec = np.array([twist.linear.x, twist.linear.y])
@@ -22,19 +23,26 @@ class NavigationController(object):
             slow_factor = squared_speed / max_squared
             twist.linear.x /= slow_factor
             twist.linear.y /= slow_factor
-
+        commanded_rotation = twist.angular.z
+        if commanded_rotation > self._max_rotation:
+            twist.angular.z = self._max_rotation
         self._cmd_vel_pub.publish(twist)
 
     def max_speed_callback(self, msg):
         rospy.loginfo('Setting max speed to {}'.format(msg.data))
         self._max_speed = msg.data
 
+    def max_rotation_callback(self, msg):
+        rospy.loginfo('Setting max rotation to {}'.format(msg.data))
+        self._max_rotation = msg.data
+
 def main():
     rospy.init_node('navigation_speed_controller')
     cmd_vel_pub = rospy.Publisher('cmd_vel', geometry_msgs.msg.Twist, queue_size=10)
     controller = NavigationController(cmd_vel_pub)
     sub = rospy.Subscriber('move_base_cmd_vel', geometry_msgs.msg.Twist, controller.nav_cmd_vel_callback)
-    sub = rospy.Subscriber('navigation_controller/max_speed', std_msgs.msg.Float32, controller.max_speed_callback)
+    sub = rospy.Subscriber('navigation_controller/max_speed', std_msgs.msg.Float32, controller.max_speed_callback) 
+    sub2 = rospy.Subscriber('navigation_controller/max_rotation', std_msgs.msg.Float32, controller.max_rotation_callback)
     rospy.spin()
 
 if __name__ == '__main__':
