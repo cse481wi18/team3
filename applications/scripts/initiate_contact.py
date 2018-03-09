@@ -70,8 +70,11 @@ class ActionRunner(object):
         # get initial position of markers... it will continue updating in background
         reachable = False
         while len(self.reader.markers) == 0:
+            # TODO[EASY]: implement looking for the AR tag by tilting its head up and down and
+            #   turning when the AR tag is not found.
             print("waiting for marker")
-            rospy.sleep(0.5)
+            self.base.turn(0.52)
+            rospy.sleep(2)
 
         markers = self.reader.markers
         print("Original marker pose is " + str(markers[0]))
@@ -125,10 +128,13 @@ class ActionRunner(object):
         print("Marker pose after moving is " + str(target_pose))
         if self.arm.compute_ik(target_pose):
             print("reachable")
+            # TODO[MID]: Find a way to move the gripper slower
             print("move_to_pose result: " + str(self.arm.move_to_pose(target_pose)))
         else:
             print("not reachable :(")
         draw_debug_marker(target_pose, [0,0,1,0.5])
+
+        # TODO[HARD]: get pre-recorded motion and apply that motion to start navigating the user
         rospy.spin()
 
 
