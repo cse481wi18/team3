@@ -25,7 +25,7 @@ from transformation_api import *
 from visualization_msgs.msg import Marker
 
 
-MIN_TURN_RADS = 0.1
+MIN_TURN_RADS = 0.15
 
 def wait_for_time():
     while rospy.Time().now().to_sec() == 0:
@@ -73,8 +73,11 @@ class ActionRunner(object):
             # TODO[EASY]: implement looking for the AR tag by tilting its head up and down and
             #   turning when the AR tag is not found.
             print("waiting for marker")
-            self.base.turn(0.52)
-            rospy.sleep(2)
+            self.base.turn(0.6)
+            print("im about to sleep")
+            rospy.sleep(1.5)
+            print("i had a nap")
+        print("found my marker!")
 
         markers = self.reader.markers
         print("Original marker pose is " + str(markers[0]))
@@ -85,8 +88,10 @@ class ActionRunner(object):
         original_pose_stamped = dot_poses(lookup_transform("/odom","/base_link"), markers[0].pose.pose)
         print("Adjusting orientation")
         while not reachable:
-            m = markers[0]
-            m = self.reader.markers[0]
+            while len(self.reader.markers) == 0:
+                pass
+            # m = markers[0]
+            m = deepcopy(self.reader.markers[0])
             pose_stamped = PoseStamped(pose=m.pose.pose)
             pose_stamped.header.frame_id = "/base_link"
             pose_stamped.header.stamp = rospy.Time.now()
@@ -94,11 +99,11 @@ class ActionRunner(object):
             print("\tComputed turn:" + str(turn))
             if abs(turn) > 0.07:
                 self.base.turn(turn)
-                rospy.sleep(1)
+                rospy.sleep(1.5)
                 print("\tExecuted turn")
-            markers = self.reader.markers
-            if abs(compute_turn(markers[0].pose.pose)) <= MIN_TURN_RADS:
-                print("\tComputed turn was less than " + str(MIN_TURN_RADS) + ": " + str(abs(compute_turn(markers[0].pose.pose))))
+            # markers = self.reader.markers
+            if abs(compute_turn(m.pose.pose)) <= MIN_TURN_RADS:
+                print("\tComputed turn was less than " + str(MIN_TURN_RADS) + ": " + str(abs(compute_turn(m.pose.pose))))
                 print("...good enough")
                 break
         print("Re-Orientation complete!")
@@ -110,9 +115,9 @@ class ActionRunner(object):
         else:
             reachable = False
             print("\tMarker is too far away from the robot")
-            computed_forward = compute_dist(pose_stamped.pose) - .7
+            computed_forward = compute_dist(pose_stamped.pose) - .85
             print("\tComputed forward distance is " + str(computed_forward))
-            max_forward = 0.05 if computed_forward > 3 else computed_forward
+            max_forward = 0.05 if computed_forward > 3.2 else computed_forward
             self.base.go_forward(max_forward)
             print("\tMoving forward by " + str(max_forward))
         # marker is now reachable
@@ -121,7 +126,8 @@ class ActionRunner(object):
         # move gripper
         #target_pose = PoseStamped(pose=original_pose_stamped.pose)
         #target_pose = PoseStamped(pose=markers[0].pose.pose)
-        original_pose_stamped.pose.position.x -= 0.2
+        original_pose_stamped.pose.position.x -= 0.25
+        original_pose_stamped.pose.position.y -= 0.10
         target_pose = dot_poses(lookup_transform("/base_link", "/odom"), original_pose_stamped.pose)
         target_pose.header.frame_id = "/base_link"
         target_pose.header.stamp = rospy.Time.now()
