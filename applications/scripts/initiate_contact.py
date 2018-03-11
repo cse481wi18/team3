@@ -70,8 +70,7 @@ class ActionRunner(object):
         # get initial position of markers... it will continue updating in background
         reachable = False
         while len(self.reader.markers) == 0:
-            # TODO[EASY]: implement looking for the AR tag by tilting its head up and down and
-            #   turning when the AR tag is not found.
+            # TODO[LOW PRIORITY]: implement looking for the AR tag by tilting its head up and down
             print("waiting for marker")
             self.base.turn(0.6)
             print("im about to sleep")
@@ -159,6 +158,9 @@ Uses undocumented feature of the Fetch robot. The fetch robot API exposes
     robot_controllers_msgs/QueryControllerStates.
 Creates an action client to use this action.
 """
+def runner():
+    ar = ActionRunner()
+
 def main():
   #  start the arm controller
   # wtf

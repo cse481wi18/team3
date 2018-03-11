@@ -157,6 +157,10 @@ class Arm(object):
         goal_builder.replan_attempts = replan_attempts
         goal_builder.tolerance = tolerance
         goal = goal_builder.build()
+        # testing velocity scaling control
+        goal_builder.max_max_velocity_scaling_factor = 0.3
+
+        # end testing
         if goal is not None:
             self._move_group_client.send_goal(goal)
             success = self._move_group_client.wait_for_result(
