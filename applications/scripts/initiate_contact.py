@@ -133,7 +133,8 @@ class ActionRunner(object):
         print("Marker pose after moving is " + str(target_pose))
         if self.arm.compute_ik(target_pose):
             print("reachable")
-            # TODO[MID]: Find a way to move the gripper slower
+            # FINISHED: the gripper moves significantly slower by changing MoveGroup's
+            #   MotionPlanRequest's max_velocity_scaling factor.
             print("move_to_pose result: " + str(self.arm.move_to_pose(target_pose)))
         else:
             print("not reachable :(")
