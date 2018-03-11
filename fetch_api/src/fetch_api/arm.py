@@ -158,7 +158,7 @@ class Arm(object):
         goal_builder.tolerance = tolerance
         goal = goal_builder.build()
         # testing velocity scaling control
-        goal_builder.max_max_velocity_scaling_factor = 0.3
+        goal_builder.max_velocity_scaling_factor = 0.3
 
         # end testing
         if goal is not None:
