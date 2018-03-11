@@ -126,7 +126,7 @@ class ActionRunner(object):
         #target_pose = PoseStamped(pose=original_pose_stamped.pose)
         #target_pose = PoseStamped(pose=markers[0].pose.pose)
         original_pose_stamped.pose.position.x -= 0.25
-        original_pose_stamped.pose.position.y -= 0.10
+        original_pose_stamped.pose.position.y -= 0.05
         target_pose = dot_poses(lookup_transform("/base_link", "/odom"), original_pose_stamped.pose)
         target_pose.header.frame_id = "/base_link"
         target_pose.header.stamp = rospy.Time.now()
