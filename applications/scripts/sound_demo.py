@@ -4,8 +4,9 @@ import fetch_api
 import rospy
 from geometry_msgs.msg import Twist
 
+alpha = 0.5
+
 class PlanCallback(object):
-    alpha = 0.5
 
     def __init__(self):
         self.playing = False
@@ -14,7 +15,8 @@ class PlanCallback(object):
         self.angular_z = 0.0
 
     def callback(self, msg):
-        self.angular_z = alpha * self.angular_z + (1 - alpha) * msg.angular_z
+        global alpha
+        self.angular_z = alpha * self.angular_z + (1 - alpha) * msg.angular.z
         cap = 0.48
         global sound
         if self.angular_z > cap:
