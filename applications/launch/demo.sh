@@ -22,7 +22,7 @@ tmux split-window -h
 tmux select-pane -t 0
 tmux send-keys "roslaunch fetch_api move_group.launch" C-m
 tmux select-pane -t 1
-tmux send-keys "roslaunch fetch_api ar_desktop max_new_marker_error:=0.16" C-m
+tmux send-keys "roslaunch fetch_api ar_desktop.launch" C-m
 
 # window 3
 tmux new-window -t $SESSION:3 -n $SESSION
