@@ -3,7 +3,7 @@ SESSION=demo
 
 # window 1
 tmux -2 new-session -d -s $SESSION
-tmux send-keys "roscore" C-m
+# tmux send-keys "roscore" C-m
 sleep 1
 tmux new-window -t $SESSION:1 -n $SESSION
 tmux split-window -h
@@ -32,7 +32,7 @@ tmux select-pane -t 0
 #tmux send-keys "python ~/frontend/robotics-ios/robotics_server.py 5000" C-m
 sleep 0.5
 tmux select-pane -t 1
-tmux send-keys "python ~/frontend/robotics-ios/server_ros_bridge.py attu3.cs.washington.edu 5000" C-m
+tmux send-keys "python ~/robotics-ios/server_ros_bridge.py attu3.cs.washington.edu 5000" C-m
 
 #not here
 #
