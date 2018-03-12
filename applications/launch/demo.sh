@@ -17,7 +17,7 @@ set_pane_title "Sound Demo"
 tmux send-keys "rosrun applications sound_demo.py" C-m
 tmux select-pane -t 1
 set_pane_title "Rosserial"
-tmux send-keys "rosrun rosserial_python serial_node.py _port:=/dev/ttyACM0 _baud:=57600" C-m
+tmux send-keys "rosrun applications reset_serial_port.py && rosrun rosserial_python serial_node.py _port:=/dev/ttyACM0 _baud:=57600" C-m
 tmux select-pane -t 2
 set_pane_title "Max Speed Publisher"
 tmux send-keys "rostopic pub /navigation_controller/max_speed std_msgs/Float32 0.5" C-m
