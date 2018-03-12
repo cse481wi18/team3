@@ -22,7 +22,7 @@ tmux select-pane -t 2
 set_pane_title "Max Speed Publisher"
 tmux send-keys "rostopic pub /navigation_controller/max_speed std_msgs/Float32 0.5" C-m
 set_pane_title "Max Rotation Publisher"
-tmux send-keys "rostopic pub /navigation_controller/max_rotation std_msgs/Float32 0.75" C-m
+tmux send-keys "rostopic pub /navigation_controller/max_rotation std_msgs/Float32 0.5" C-m
 
 # window 2
 tmux new-window -t $SESSION:2 -n "Mission Control"
