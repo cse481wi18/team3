@@ -28,7 +28,8 @@ tmux send-keys "roslaunch fetch_api ar_desktop max_new_marker_error:=0.16" C-m
 tmux new-window -t $SESSION:3 -n $SESSION
 tmux split-window -h
 tmux select-pane -t 0
-tmux send-keys "python ~/frontend/robotics-ios/robotics_server.py 5000" C-m
+# not needed
+#tmux send-keys "python ~/frontend/robotics-ios/robotics_server.py 5000" C-m
 sleep 0.5
 tmux select-pane -t 1
 tmux send-keys "python ~/frontend/robotics-ios/server_ros_bridge.py attu3.cs.washington.edu 5000" C-m
