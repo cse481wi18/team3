@@ -69,6 +69,7 @@ class ActionRunner(object):
         self.markers = {}
         # get initial position of markers... it will continue updating in background
         reachable = False
+        rospy.sleep(0.5)
         while len(self.reader.markers) == 0:
             # TODO[LOW PRIORITY]: implement looking for the AR tag by tilting its head up and down
             print("waiting for marker")
@@ -86,7 +87,11 @@ class ActionRunner(object):
         draw_debug_marker(debug_marker_pose, [0,1,0,0.5])
         original_pose_stamped = dot_poses(lookup_transform("/odom","/base_link"), markers[0].pose.pose)
         print("Adjusting orientation")
+        number_of_turns = 0
         while not reachable:
+            if number_of_turns > 5:
+                print("Turned enough, I guess...")
+                break
             while len(self.reader.markers) == 0:
                 pass
             # m = markers[0]
@@ -98,6 +103,7 @@ class ActionRunner(object):
             print("\tComputed turn:" + str(turn))
             if abs(turn) > 0.07:
                 self.base.turn(turn)
+                number_of_turns += 1
                 rospy.sleep(1.5)
                 print("\tExecuted turn")
             # markers = self.reader.markers
@@ -127,6 +133,10 @@ class ActionRunner(object):
         #target_pose = PoseStamped(pose=markers[0].pose.pose)
         original_pose_stamped.pose.position.x -= 0.25
         original_pose_stamped.pose.position.y -= 0.05
+        original_pose_stamped.pose.orientation.x = 0
+        original_pose_stamped.pose.orientation.y = 0.7
+        original_pose_stamped.pose.orientation.z = 0
+        original_pose_stamped.pose.orientation.w = -0.7
         target_pose = dot_poses(lookup_transform("/base_link", "/odom"), original_pose_stamped.pose)
         target_pose.header.frame_id = "/base_link"
         target_pose.header.stamp = rospy.Time.now()

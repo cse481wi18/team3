@@ -7,20 +7,23 @@ from geometry_msgs.msg import Twist
 class PlanCallback(object):
     def __init__(self):
         self.playing = False
+        self.prev = 0.0
         rospy.Subscriber('cmd_vel', Twist, self.callback)
 
     def callback(self, msg):
+        cap = 0.7
         global sound
-        if msg.angular.z > 0.7:
-            if not self.playing:
+        if msg.angular.z > cap:
+            if self.prev > cap and not self.playing:
                 self.playing = True
-                sound.say('sharp left')
-        elif msg.angular.z < -0.7:
-            if not self.playing:
+                sound.say('left turn')
+        elif msg.angular.z < -cap:
+            if self.prev < -cap and not self.playing:
                 self.playing = True
-                sound.say('sharp right')
+                sound.say('right turn')
         else:
             self.playing = False
+        self.prev = msg.angular.z
         print 'callback:', msg
 
 rospy.init_node('speak')
